@@ -30,7 +30,7 @@ include(cmake/get_cpm.cmake)
 # --------------------------------------------------------------------
 CPMAddPackage(
   NAME Eigen3
-  GITLAB_REPOSITORY libeigen/eigen
+  GITHUB_REPOSITORY eigen-mirror/eigen
   GIT_TAG 3.4.0
   DOWNLOAD_ONLY YES
 )
