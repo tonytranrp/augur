@@ -205,6 +205,36 @@ template <typename Scalar, int MeasDim, std::size_t MaxTracks, std::size_t MaxDe
     // track, only gated pairs allowed), accumulating each event's
     // weight into beta/total_weight as it's completed rather than
     // materializing the (potentially large) event list.
+    //
+    // GCC's -Warray-bounds= flags the current_assignment[track_idx]/
+    // current_assignment[i] accesses below (docs/PRODUCTION_ROADMAP.md
+    // P0 item 4), reportedly with out-of-range subscripts against
+    // current_assignment's MaxTracks-element std::array. That's a false
+    // positive: `enumerate` only ever indexes with `i < num_tracks` (the
+    // loop bound in the base case) or `track_idx` while the recursion
+    // guard `track_idx == num_tracks` above has NOT yet triggered --
+    // i.e. `track_idx < num_tracks` -- and num_tracks is `.size()` of a
+    // FixedVector<..., MaxTracks>, which that container's own push_back
+    // assert guarantees is <= MaxTracks. GCC's value-range analysis
+    // appears to lose that bound through several levels of inlined
+    // recursive generic-lambda self-capture (`self(self, ...)`), a
+    // known pattern for this class of false positive. Verified instead
+    // with what this environment can actually check (no GCC available
+    // here -- confirmed its "gcc"/"g++" are clang aliases): a standalone
+    // repro instantiating this function at full MaxTracks=4/
+    // MaxDetections=4 capacity, fully-connected gating (every track
+    // gates every detection, the worst case for this recursion's branch
+    // factor), under clang -fsanitize=address,undefined -- clean exit,
+    // no report from either sanitizer. Suppressed narrowly (this block
+    // only, GCC only) rather than restructured, since restructuring
+    // provably-correct code on the strength of a warning from a compiler
+    // not available to verify against isn't a fix, just an unverified
+    // guess -- re-evaluate on a real GCC toolchain if this ever needs
+    // revisiting (e.g. Phase 2's CI matrix).
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Warray-bounds="
+#endif
     const auto enumerate = [&](auto&& self, std::size_t track_idx, std::uint32_t used_mask,
                                 Scalar weight_so_far, std::size_t num_assigned) -> void {
         if (track_idx == num_tracks) {
@@ -228,6 +258,9 @@ template <typename Scalar, int MeasDim, std::size_t MaxTracks, std::size_t MaxDe
             current_assignment[track_idx] = -1;
         }
     };
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic pop
+#endif
     enumerate(enumerate, 0, 0u, Scalar(1), 0);
 
     if (total_weight > Scalar(0)) {
