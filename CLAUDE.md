@@ -22,30 +22,52 @@ it before touching `imm/`.
 
 ## Folder map
 
-- `include/augur/core/` — concepts + feature-detection config. Foundation
-  everything else depends on.
+Every item in `docs/ROADMAP.md` (14 extension ideas plus the different-order
+IMM mixing structural improvement) is implemented and tested — nothing
+below is an unimplemented stub anymore. "Flagged sketch" means it works and
+is tested, but a named part is a documented simplification; see the file's
+own top comment and `docs/ROADMAP.md` for specifics. Full tier breakdown:
+`docs/ARCHITECTURE.md` §6.
+
+- `include/augur/core/` — concepts + feature-detection config +
+  `state_component.hpp` (augmented-layout enum for different-order IMM
+  mixing). Foundation everything else depends on.
 - `include/augur/utils/` — domain-agnostic helpers (`FixedVector`,
   `Stopwatch`, ...). Reused everywhere; must never know what a `MotionModel`
   is.
 - `include/augur/math/` — the one choke point for linear algebra (Eigen
-  aliases) and optional glm interop.
-- `include/augur/models/` — motion models (constant velocity/acceleration,
-  coordinated turn; Singer is a flagged sketch).
-- `include/augur/filters/` — linear/extended Kalman filters;
-  `filters/adaptive/` is a roadmap stub.
+  aliases, `safe_inverse`/`project_to_psd`) and optional glm interop.
+- `include/augur/models/` — constant velocity/acceleration, coordinated
+  turn, and Current Statistical are solid; Singer is a flagged sketch
+  (process-noise term is a documented simplification, not Singer's exact
+  closed-form integral).
+- `include/augur/filters/` — linear, extended, unscented Kalman, and
+  particle filters are solid; `filters/adaptive/sage_husa.hpp` is a flagged
+  sketch (assumes a direct-position measurement model, stated in its own
+  file comment).
 - `include/augur/imm/` — the star of the library: mode matrix, mixing math,
   `Estimator<Filters...>` (same-dimension only), plus the opt-in
-  `HeterogeneousEstimator<Filters...>` for different-order mixing.
-- `include/augur/predict/` — turns filter state into position/velocity/
-  error-ellipse queries; `latency_compensation.hpp` is a roadmap stub.
-- `include/augur/track/` — multi-target association/lifecycle/GM-PHD — all
-  roadmap stubs.
+  `HeterogeneousEstimator<Filters...>` for different-order mixing — a
+  flagged sketch (works and is tested, with a documented characteristic
+  around how confident a non-dominant model can be about state the others
+  don't share; see `docs/ROADMAP.md` item 0).
+- `include/augur/predict/` — `query.hpp` (2D/3D error-ellipse queries) and
+  `latency_compensation.hpp` (`SnapshotBuffer` + `predict_to_render_time`)
+  are both solid.
+- `include/augur/track/` — data association (GNN + JPDA), track lifecycle
+  management, out-of-sequence measurement handling, and sensor fusion are
+  solid; `gm_phd.hpp` is a flagged sketch (`extract_targets()` doesn't yet
+  split an above-weight-1 component into multiple targets).
 - `include/augur/reflect/`, `include/augur/plugin/` — the mechanisms that
-  make this "open" rather than hardcoded: a reflection facade over
-  Boost.PFR, and the concepts-based (plus opt-in runtime registry) plugin
-  system.
-- `examples/`, `tests/unit/`, `docs/` — see `docs/ARCHITECTURE.md` §4 for the
-  full annotated tree.
+  make this "open" rather than hardcoded: a reflection facade
+  (`descriptor.hpp`) dispatching between a Boost.PFR backend (plain
+  aggregates) and a hand-written Eigen-vector backend (PFR can't reflect
+  Eigen's non-aggregate matrix type), driving `serialize.hpp`'s binary
+  (de)serialization; and the concepts-based (plus opt-in runtime registry)
+  plugin system. Both solid.
+- `examples/`, `tests/unit/`, `docs/` — one example and one test file per
+  roadmap item (15 examples, 17 test files); see `docs/ARCHITECTURE.md` §4
+  for the full annotated tree.
 
 ## The one standing rule
 
