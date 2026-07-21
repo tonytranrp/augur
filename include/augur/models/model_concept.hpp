@@ -23,7 +23,7 @@ concept MotionModel = requires(const T& model,
                                 const augur::math::Vector<typename T::Scalar, T::dimension>& x,
                                 typename T::Scalar dt) {
     typename T::Scalar;
-    core::Scalar<typename T::Scalar>;
+    requires core::Scalar<typename T::Scalar>;
     { T::dimension } -> std::convertible_to<std::size_t>;
 
     // x_{k+1} = f(x_k, dt) -- the deterministic part of the model.
