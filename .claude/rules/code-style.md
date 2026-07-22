@@ -84,19 +84,27 @@ Every non-trivial file is honest, in its own top comment, about its tier:
 
 - **Solid** (most of `core/`, `math/`, `models/{constant_velocity,
   constant_acceleration,coordinated_turn}.hpp`, `filters/{kalman,
-  extended_kalman}.hpp`, all of `imm/`, `predict/query.hpp`, `reflect/`,
-  `plugin/`, all of `utils/`): no special marker — comments explain
-  rationale, not caveats.
-- **Flagged sketch** (`models/singer.hpp`): compiles and satisfies its
-  concept, but a named part is a known simplification. Marked with a
-  `ROADMAP MODEL --` line at the top of the file comment, naming exactly
-  which part is simplified and citing the source for the real derivation.
-- **Roadmap stub** (`filters/adaptive/sage_husa.hpp`,
-  `predict/latency_compensation.hpp`, `track/*.hpp`): not implemented.
-  Marked with `ROADMAP STUB (see docs/ROADMAP.md, "<item name>")` at the
-  top, then prose (what/why/references/intended integration), then a
-  **commented-out** sketch of the intended API — never a real, compiling
-  declaration that just throws or returns a dummy value.
+  extended_kalman,unscented_kalman,particle_filter}.hpp`, all of `imm/`
+  except the heterogeneous-mixing files below, `predict/{query,
+  latency_compensation}.hpp`, `track/{association,track_manager,
+  out_of_sequence,fusion}.hpp`, `reflect/`, `plugin/`, all of `utils/`): no
+  special marker — comments explain rationale, not caveats.
+- **Flagged sketch** (`models/singer.hpp`, `models/current_statistical.hpp`
+  + `filters/current_statistical_filter.hpp`, `imm/{augmented_layout,
+  heterogeneous_mixing,heterogeneous_estimator}.hpp`,
+  `filters/adaptive/sage_husa.hpp`, `track/gm_phd.hpp`): compiles and
+  satisfies its concept, but a named part is a known simplification. Marked
+  with a `ROADMAP MODEL --` line at the top of the file comment, naming
+  exactly which part is simplified and citing the source for the real
+  derivation.
+- **Roadmap stub**: not implemented. As of `docs/ROADMAP.md`'s 14 items (plus
+  the different-order-IMM-mixing structural item) all being done, nothing
+  in the tree is currently in this tier — it exists for genuinely new,
+  not-yet-implemented work. Marked with `ROADMAP STUB (see docs/ROADMAP.md,
+  "<item name>")` at the top, then prose (what/why/references/intended
+  integration), then a **commented-out** sketch of the intended API —
+  never a real, compiling declaration that just throws or returns a dummy
+  value.
 
 Mark new code the same way: don't let a stub masquerade as solid, and don't
 leave a flagged simplification undocumented. `augur.hpp` (the umbrella

@@ -217,8 +217,10 @@ CI.
 - Expand `test_helpers.hpp`'s finite-difference approach to cover any
   model/filter that doesn't already use it (spot-check which ones do
   before assuming coverage is uniform across all 14 items).
-- Resolve P0-5 (heterogeneous IMM tuning) with an actual investigation
-  rather than a guess, and turn whatever's learned into a regression test.
+- ~~Resolve P0-5 (heterogeneous IMM tuning) with an actual investigation
+  rather than a guess, and turn whatever's learned into a regression
+  test.~~ Done in Phase 1 itself (P0 item 5), not deferred to here —
+  `tests/unit/test_heterogeneous_imm.cpp` already locks in the fix.
 
 ### Phase 4 — Packaging and distribution
 - `install()`/`export()` rules in `CMakeLists.txt` so
