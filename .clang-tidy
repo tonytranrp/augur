@@ -1,0 +1,30 @@
+---
+# Non-blocking for now (docs/PRODUCTION_ROADMAP.md Phase 2) -- run via
+# .github/workflows/ci.yml's clang-tidy job, which reports findings
+# without failing the build. Checks excluded below are excluded because
+# they'd be pure noise for this specific codebase, not because the
+# underlying advice is universally wrong:
+#   - magic-numbers: this is a numerical/physics library -- named
+#     mathematical constants (dt, epsilon thresholds, covariance scale
+#     factors) are the domain, not a code smell.
+#   - bounds-pointer-arithmetic / bounds-constant-array-index: fires
+#     constantly on ordinary Eigen indexing (x(0), P(i,j)), which isn't
+#     raw pointer arithmetic in any meaningful sense.
+#   - identifier-length: .claude/rules/code-style.md deliberately keeps
+#     short names for well-understood math symbols (T, N, dt, x, P, K, S)
+#     -- that's this project's own documented convention, not an oversight.
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -readability-identifier-length
+WarningsAsErrors: ''
+HeaderFilterRegex: 'include/augur/.*'
+FormatStyle: none

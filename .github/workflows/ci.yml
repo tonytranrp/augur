@@ -207,3 +207,37 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+
+      # CMAKE_EXPORT_COMPILE_COMMANDS gives clang-tidy a real
+      # compile_commands.json to work from -- necessary for a header-only
+      # template-heavy library, where a header on its own has nothing to
+      # analyze until it's actually instantiated by a real translation
+      # unit (an example or a test .cpp).
+      - name: Configure
+        run: >
+          cmake -B build
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DAUGUR_BUILD_TESTS=ON
+          -DAUGUR_BUILD_EXAMPLES=ON
+
+      # Non-blocking for now, per docs/PRODUCTION_ROADMAP.md Phase 2's own
+      # wording: this is a first pass to start surfacing findings, not a
+      # merge gate -- this repo hasn't had a chance to triage a clang-tidy
+      # checklist yet. continue-on-error keeps the step's own exit code
+      # (a real "N warnings found" signal, visible in the Actions UI)
+      # rather than silently swallowing it, while not failing the
+      # overall workflow.
+      - name: Run clang-tidy
+        continue-on-error: true
+        run: |
+          find examples tests -name '*.cpp' | xargs -P "$(nproc)" -I{} clang-tidy -p build {}
