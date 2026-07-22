@@ -66,3 +66,7 @@ augur_apply_strict_warnings(reflection_serialization)
 add_executable(linear_drag_ballistic 16_linear_drag_ballistic/main.cpp)
 target_link_libraries(linear_drag_ballistic PRIVATE augur::augur)
 augur_apply_strict_warnings(linear_drag_ballistic)
+
+add_executable(coordinated_turn_3d 17_coordinated_turn_3d/main.cpp)
+target_link_libraries(coordinated_turn_3d PRIVATE augur::augur)
+augur_apply_strict_warnings(coordinated_turn_3d)

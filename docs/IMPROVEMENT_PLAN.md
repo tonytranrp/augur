@@ -61,14 +61,33 @@ measured 6.4x-106x faster than the shift-based code it replaced depending on
 originally measured). The linear-drag ballistic model is also done
 (`models/linear_drag_ballistic.hpp`) — its own derivation caught a real
 hand-derivation algebra error via RK4 cross-check before any C++ was written.
+The quasi-3D coordinated-turn model is also done
+(`models/coordinated_turn_3d.hpp`) — the lowest-priority single item in this
+document's own sequencing, and the last one remaining; composes the
+existing, unmodified `CoordinatedTurn` xy-block with a decoupled
+`ConstantVelocity<.,1>` vertical channel (mirroring how `CurrentStatistical`
+already reuses `Singer`), verified block-for-block equal to standalone
+instances of both sub-models plus a full 7x7 finite-difference sweep (2000
+trials outside `CoordinatedTurn`'s own small-omega guard, 5000 inside it)
+confirming the composed jacobian's off-block-diagonal entries are exactly
+zero, not just small. Scoped to standalone use only (own IMM ensemble or a
+lone `KalmanFilter`/`ExtendedKalmanFilter`), per this document's own note
+that `HeterogeneousEstimator` participation would additionally need
+`core/state_component.hpp`'s augmented-state enum extended to a Z
+component — deliberately not done, since nothing in this finding's own
+request needed it.
 
-**Deliberately not done**, with reasoning (explicitly "no urgency, land
-whenever convenient" in this document's own sequencing, revisited and
-reaffirmed rather than silently dropped): the quasi-3D coordinated-turn
-motion model is a pure addition, not a fix to anything existing, and was
-the lowest-priority single item in this document's own sequencing — the
-other three items in that same original tier (ring buffer, linear-drag
-ballistic, and everything above) are now done.
+**Nothing remains deliberately deferred** as of this update: every item in
+this document's original "Top findings" table and "New model
+opportunities" section (safe_inverse, the Filter/plugin MeasDim bug, the
+coordinated_turn.hpp jacobian bugs, the serialize.hpp bounds check, JPDA
+clustering, track reacquisition, PDAF, OutOfSequenceEstimator conformance,
+the imm/ padding heuristic, CTAD comments, FixedVector, std::function
+overhead, RNG determinism, the ring buffer promotion, and both new motion
+models) has a commit implementing it. What's left, if any, is genuinely
+future work already called out as such in this document's own text (e.g.
+the deeper BLUE-based imm/ padding fix, quadratic-drag ballistics, full
+SO(3) turn dynamics) — not a backlog of "should get to this."
 
 Every implemented item has its own commit with a from-scratch verification
 methodology (ad hoc Python/numpy math checks before any C++, standalone
