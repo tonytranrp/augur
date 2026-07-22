@@ -18,6 +18,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "augur/augur.hpp"
+#include "test_helpers.hpp"
 
 using Catch::Matchers::WithinAbs;
 
@@ -35,6 +36,14 @@ TEST_CASE("ConstantVelocity::transition matches hand-computed arithmetic", "[mod
     REQUIRE_THAT(x1(1), WithinAbs(-0.5f, 1e-6)); // py += vy * dt = -1 * 0.5
     REQUIRE_THAT(x1(2), WithinAbs(2.0f, 1e-6));  // velocity unchanged
     REQUIRE_THAT(x1(3), WithinAbs(-1.0f, 1e-6));
+}
+
+TEST_CASE("ConstantVelocity::jacobian matches a finite-difference derivative", "[models][cv]") {
+    using CV = augur::models::ConstantVelocity<float, 2>;
+    CV model{1.0f};
+    CV::State x;
+    x << 3.0f, -2.0f, 2.0f, -1.0f;
+    augur_test::check_jacobian_matches_finite_difference(model, x, 0.5f);
 }
 
 TEST_CASE("ConstantVelocity::process_noise is symmetric positive semi-definite", "[models][cv]") {

@@ -5,6 +5,7 @@
 
 add_executable(augur_unit_tests
     unit/test_kalman_cv.cpp
+    unit/test_constant_acceleration.cpp
     unit/test_coordinated_turn.cpp
     unit/test_singer.cpp
     unit/test_imm_mixing.cpp
