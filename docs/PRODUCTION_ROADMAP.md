@@ -27,6 +27,12 @@ ends.
 
 ### P0 — Concrete, cheap, fix these first
 
+**Phase 1 status: all five items resolved**, one commit each
+(`14d5f55`..`90c4459`), full test suite passing after every commit. See
+docs/ROADMAP.md for two of the five that turned into deeper findings
+(items 0 and, indirectly, the association.hpp performance note) beyond
+the original one-line description below.
+
 1. **`CLAUDE.md` is stale.** It still describes `filters/adaptive/`, all of
    `track/`, and `predict/latency_compensation.hpp` as roadmap stubs.
    They're not — every one is implemented and tested. This is the exact
@@ -34,6 +40,10 @@ ends.
    guard against; it just hasn't been re-synced since the `/goal` run
    finished. Fix: rewrite the "Folder map" section against the actual
    `docs/ROADMAP.md` status table.
+   **✅ Done** (`14d5f55`) — rewrote the folder map against `docs/ROADMAP.md`'s
+   actual per-item status, using the same "Solid"/"Flagged sketch"
+   terminology `docs/ARCHITECTURE.md` already uses so the two docs stay
+   consistent with each other, not just individually accurate.
 2. **`CMakeLists.txt` fetches Eigen from `gitlab.com`.** `GITLAB_REPOSITORY
    libeigen/eigen` fails closed on any network allowlist that includes
    `github.com` but not `gitlab.com` — which is a common posture for CI
@@ -42,6 +52,10 @@ ends.
    of April 2026) builds cleanly as a drop-in replacement. Given
    "universal" is a stated design goal, this is worth fixing regardless of
    whether you've personally hit it.
+   **✅ Done** (`5d47daf`) — switched, and specifically re-verified with a
+   genuinely fresh fetch (temporarily moved `.cpmcache/eigen3` aside so
+   CPM couldn't cache-hit past the source-URL change): clones cleanly,
+   lands at the correct `3.4.0` tag, full build + test suite unaffected.
 3. **`model_concept.hpp:26` is missing a `requires`.** `core::Scalar<typename
    T::Scalar>;` inside the `requires{}` block only checks that the
    expression is *well-formed*, not that the concept actually *holds* —
@@ -52,6 +66,7 @@ ends.
    it's a one-word fix (`requires core::Scalar<typename T::Scalar>;`) and
    there's no reason to leave an imprecise constraint in the one file that
    defines the library's entire plugin contract.
+   **✅ Done** (`29fb502`) — one-word fix, applied exactly as scoped.
 4. **A `-Warray-bounds=` warning in `track/association.hpp`'s
    `joint_probabilistic_data_association()`, lines ~220-228 — chased down,
    looks like a false positive, but silence it properly rather than leaving
@@ -67,11 +82,49 @@ ends.
    once under ASan and it was fine" isn't the same as "provably safe" —
    see Goal 3 below for making this a permanent, automated check instead
    of something I verified once by hand.
+   **✅ Done** (`ce793c6`) — narrow `#pragma GCC diagnostic` suppression
+   (GCC-only, this block only), with the structural correctness argument
+   and the ASan/UBSan repro's exact scenario written directly into the
+   code comment. Caveat stated honestly: no real GCC toolchain was
+   available in the environment this was done in (its `gcc`/`g++` are
+   clang aliases — `clang++ --version` and `gcc --version` report the same
+   binary), so the GCC-specific warning itself was never re-reproduced,
+   only reasoned about and cross-checked via what *was* available
+   (ASan/UBSan under clang). Worth a real GCC pass once Phase 2's CI
+   matrix exists.
 5. **`heterogeneous_imm`'s mode probabilities lean CV-heavy (up to 0.95)
    even while the ground truth is visibly curving.** Not confirmed wrong —
    could be legitimate (CV fits a gentle short-horizon arc reasonably well)
    — but worth a deliberate tuning pass rather than leaving it as an
    unexamined observation.
+   **✅ Done** (`90c4459`) — confirmed legitimate (per-step curvature
+   deviation is ~6x smaller than measurement noise at this scenario's
+   parameters, verified numerically) *and* found a real bug the
+   investigation wasn't originally looking for: `big_unknown_variance()`
+   (1e4) was large enough to nearly erase a recovering model's own prior
+   in one mixing cycle at a mode-probability crossover, briefly producing
+   a wrong-signed combined-position estimate — outside the original
+   20-step demo's window, only caught by deliberately extending the
+   scenario to actually reach a crossover. Fixed (swept to 100) and
+   `docs/ROADMAP.md` item 0's prior "stays accurate throughout" claim
+   corrected to state what's actually verified. Full details:
+   `docs/ROADMAP.md` item 0's "Update" paragraph.
+
+**Warnings note** (relevant to the "zero warnings under
+`-Wall -Wextra -Wpedantic`" bar this phase set for itself): confirmed via
+a clean rebuild with those flags that **`include/augur/` itself is 0
+warnings**. The full build (library + tests) is not literally
+warning-free — Catch2's `TEST_CASE` macro uses `__COUNTER__`, which this
+environment's clang (a very recent 22.1.4) flags under `-Wc2y-extensions`
+at every macro expansion site (135 occurrences, one per `TEST_CASE`/
+`SECTION` call, all inside `tests/unit/*.cpp` at the point Catch2's macro
+expands, none inside `include/augur/`). That's Catch2's own internal
+implementation detail on a pinned third-party dependency, not augur code
+— `-isystem` (already used for Catch2's include path) doesn't suppress it
+because the diagnostic is attributed to the macro's expansion site in the
+including file, not Catch2's header. Not fixed here since there's nothing
+in this repo to fix; noted for Phase 2 so the CI warnings-as-errors job
+scopes `-Werror` to augur's own sources rather than tripping on this.
 
 ### P1 — Real gaps between "well-tested" and "production"
 
