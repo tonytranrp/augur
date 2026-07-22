@@ -114,13 +114,23 @@ jobs:
           -DAUGUR_BUILD_EXAMPLES=ON
           -DAUGUR_WARNINGS_AS_ERRORS=ON
 
+      # Explicit job count rather than bare --parallel (which spawns as
+      # many concurrent compiles as the runner reports cores). Observed
+      # directly: macos-clang-debug intermittently spent 20-25+ minutes
+      # on what every other job (including its own Release sibling)
+      # finished in under 8, and the cancelled run's cleanup log showed
+      # dozens of still-live orphaned clang processes at once --
+      # consistent with oversubscribing a runner whose reported core
+      # count exceeds what it can actually sustain concurrently, not a
+      # hang. 3 is conservative for GitHub's smallest standard runner
+      # tier (historically macOS); Linux/Windows have headroom to spare.
       - name: Build (Unix)
         if: runner.os != 'Windows'
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel 3
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel 3
 
       - name: Test (Unix)
         if: runner.os != 'Windows'
