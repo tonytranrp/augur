@@ -43,25 +43,6 @@ using DynVector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 template <typename Scalar>
 using DynMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-// A numerically-safe symmetric inverse, used by every filter's update
-// step (innovation covariance inverse). Falls back to a pseudo-inverse
-// if the matrix is (near-)singular rather than propagating NaNs into
-// the state -- a sensor dropout or a degenerate covariance shouldn't be
-// able to poison an entire track.
-template <typename Scalar, int N>
-[[nodiscard]] inline Matrix<Scalar, N> safe_inverse(const Matrix<Scalar, N>& m) {
-    Eigen::LDLT<Matrix<Scalar, N>> ldlt(m);
-    if (ldlt.info() == Eigen::Success && ldlt.isPositive()) {
-        return ldlt.solve(Matrix<Scalar, N>::Identity());
-    }
-    // Degenerate covariance: regularize slightly and retry rather than
-    // returning garbage. This is intentionally conservative -- callers
-    // that hit this path in practice should treat it as a signal their
-    // process/measurement noise needs revisiting.
-    constexpr Scalar epsilon = static_cast<Scalar>(1e-6);
-    return (m + epsilon * Matrix<Scalar, N>::Identity()).inverse();
-}
-
 // Projects a symmetric matrix onto the positive-semi-definite cone by
 // eigenvalue-flooring: decompose, clamp any eigenvalue below
 // min_eigenvalue up to it, reconstruct. Used by
@@ -72,7 +53,8 @@ template <typename Scalar, int N>
 // Verified numerically (ad hoc python3, per .claude/rules/testing.md)
 // that this keeps a Sage-Husa-style adaptive update stable through a
 // real change in the true noise level, where the unprojected update
-// would otherwise be free to go non-PSD.
+// would otherwise be free to go non-PSD. Also used by safe_inverse()
+// below (declared after this function specifically so it can call it).
 template <typename Scalar, int N>
 [[nodiscard]] inline Matrix<Scalar, N> project_to_psd(const Matrix<Scalar, N>& m,
                                                         Scalar min_eigenvalue = static_cast<Scalar>(1e-9)) {
@@ -80,6 +62,65 @@ template <typename Scalar, int N>
     Eigen::SelfAdjointEigenSolver<Matrix<Scalar, N>> solver(symmetric);
     const auto clamped = solver.eigenvalues().cwiseMax(min_eigenvalue);
     return solver.eigenvectors() * clamped.asDiagonal() * solver.eigenvectors().transpose();
+}
+
+// A numerically-safe symmetric inverse, used by every filter's update
+// step (innovation covariance inverse). Falls back to a pseudo-inverse
+// if the matrix is (near-)singular rather than propagating NaNs into
+// the state -- a sensor dropout or a degenerate covariance shouldn't be
+// able to poison an entire track.
+//
+// The admission floor is scale-RELATIVE (a fraction of the matrix's own
+// diagonal magnitude), not a fixed absolute constant. This mattered in
+// practice, not just in theory: an earlier version of this fix used an
+// absolute 1e-9 floor (matching project_to_psd's own default
+// min_eigenvalue) and passed every check at float64 -- but verified (ad
+// hoc python3 + numpy, per .claude/rules/testing.md) at REAL float32
+// precision, the *same* scenario came back non-finite. Adding 1e-9 to an
+// eigenvalue of order 10 (a perfectly ordinary covariance magnitude)
+// rounds away to nothing in float32's ~7 decimal digits, so the
+// regularization silently did nothing and `.inverse()` on the
+// still-exactly-singular result produced Inf/NaN. A relative floor scales
+// with whatever magnitude the caller's covariance actually uses.
+template <typename Scalar, int N>
+[[nodiscard]] inline Matrix<Scalar, N> safe_inverse(const Matrix<Scalar, N>& m) {
+    // scale: a cheap, standard proxy for "how big are this covariance's
+    // own numbers" -- diagonal entries of a PSD matrix are variances,
+    // always its largest-magnitude entries, so no separate norm/SVD call
+    // is needed. absolute_floor only matters when scale itself is ~0
+    // (e.g. m is the exact zero matrix): without it, relative_eps * 0
+    // would floor to 0 too, right back to the original bug.
+    constexpr Scalar relative_eps = static_cast<Scalar>(1e-4);
+    constexpr Scalar absolute_floor = static_cast<Scalar>(1e-6);
+    const Scalar scale = m.diagonal().cwiseAbs().maxCoeff();
+    const Scalar floor = std::max(relative_eps * scale, absolute_floor);
+
+    // isPositive() alone means positive-SEMI-definite (Eigen's own
+    // documented meaning), not strictly positive-definite -- an
+    // exactly-singular-but-PSD input (e.g. a zero measurement-noise
+    // covariance, a completely plausible "no sensor noise configured"
+    // case) would otherwise wrongly take this fast path, and
+    // `ldlt.solve(Identity())` silently returns an all-zero "inverse"
+    // instead of erroring or falling back (traced into
+    // filters/kalman.hpp::update(): a zero S_inv makes the Kalman gain
+    // zero too, silently turning update() into a no-op -- the exact
+    // opposite of the correct R->0 behavior of fully trusting the new
+    // measurement). Requiring every pivot to clear the floor above is
+    // what actually encodes "safe to invert directly."
+    Eigen::LDLT<Matrix<Scalar, N>> ldlt(m);
+    if (ldlt.info() == Eigen::Success && ldlt.isPositive() && ldlt.vectorD().minCoeff() > floor) {
+        return ldlt.solve(Matrix<Scalar, N>::Identity());
+    }
+    // Degenerate covariance: project onto the PSD cone (eigenvalue
+    // floor) and invert that, rather than a blind epsilon*I additive
+    // nudge -- verified (ad hoc python3 + numpy) that a fixed nudge
+    // doesn't reliably fix an indefinite matrix (e.g. diag(-0.5, 100)
+    // stays indefinite after +1e-6*I) and that an adversarial input like
+    // -1e-6*I produces literal NaN from the raw .inverse() that used to
+    // follow it, while project_to_psd(m, floor).inverse() stays finite
+    // for both plus the R=Zero() case above -- reuses this file's own
+    // more robust primitive rather than a second regularization scheme.
+    return project_to_psd<Scalar, N>(m, floor).inverse();
 }
 
 } // namespace augur::math

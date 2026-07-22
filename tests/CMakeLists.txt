@@ -4,6 +4,7 @@
 # who just want the library never pay for a test framework dependency.
 
 add_executable(augur_unit_tests
+    unit/test_safe_inverse.cpp
     unit/test_kalman_cv.cpp
     unit/test_constant_acceleration.cpp
     unit/test_coordinated_turn.cpp
