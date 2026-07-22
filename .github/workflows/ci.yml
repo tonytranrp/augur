@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-matrix:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux: both GCC and Clang, both configs. macOS ships only
+          # Clang (Apple's own "gcc" is a Clang wrapper, not a real GCC --
+          # a genuine GCC install via Homebrew is slow and non-standard
+          # for CI, so it's deliberately not in this matrix). Windows:
+          # MSVC as the default toolchain, plus Clang via the ClangCL
+          # toolset (LLVM ships preinstalled on GitHub's windows-latest
+          # image as part of the Visual Studio Desktop C++ workload).
+          - name: ubuntu-gcc-debug
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            build_type: Debug
+          - name: ubuntu-gcc-release
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            build_type: Release
+          - name: ubuntu-clang-debug
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            build_type: Debug
+          - name: ubuntu-clang-release
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            build_type: Release
+          - name: macos-clang-debug
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+            build_type: Debug
+          - name: macos-clang-release
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+            build_type: Release
+          - name: windows-msvc-debug
+            os: windows-latest
+            build_type: Debug
+          - name: windows-msvc-release
+            os: windows-latest
+            build_type: Release
+          - name: windows-clangcl-debug
+            os: windows-latest
+            build_type: Debug
+            toolset: ClangCL
+          - name: windows-clangcl-release
+            os: windows-latest
+            build_type: Release
+            toolset: ClangCL
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DAUGUR_BUILD_TESTS=ON
+          -DAUGUR_BUILD_EXAMPLES=ON
+
+      - name: Configure (Windows, MSVC)
+        if: runner.os == 'Windows' && matrix.toolset == ''
+        run: >
+          cmake -B build
+          -DAUGUR_BUILD_TESTS=ON
+          -DAUGUR_BUILD_EXAMPLES=ON
+
+      - name: Configure (Windows, ClangCL)
+        if: runner.os == 'Windows' && matrix.toolset != ''
+        run: >
+          cmake -B build -T ${{ matrix.toolset }}
+          -DAUGUR_BUILD_TESTS=ON
+          -DAUGUR_BUILD_EXAMPLES=ON
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: cmake --build build --parallel
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Test (Unix)
+        if: runner.os != 'Windows'
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
