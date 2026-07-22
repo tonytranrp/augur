@@ -91,7 +91,7 @@ template <typename Scalar, int MeasDim>
                                                  const InnovationGate<Scalar, MeasDim>& gate) {
     const Scalar exponent = Scalar(-0.5) * (innovation.transpose() * gate.S_inv * innovation)(0, 0);
     if (!(gate.det_s > Scalar(0))) return Scalar(0);
-    const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, MeasDim) * gate.det_s);
+    const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, Scalar(MeasDim)) * gate.det_s);
     return std::exp(exponent) / normalizer;
 }
 

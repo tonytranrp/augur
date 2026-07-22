@@ -95,7 +95,7 @@ private:
         if (!(det_s > Scalar(0))) {
             return Scalar(1e-12); // degenerate covariance: treat as maximally surprising
         }
-        const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, MeasDim) * det_s);
+        const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, Scalar(MeasDim)) * det_s);
         return std::exp(exponent) / normalizer;
     }
 

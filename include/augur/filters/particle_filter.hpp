@@ -155,7 +155,7 @@ private:
         const Scalar exponent = Scalar(-0.5) * (innovation.transpose() * cov_inv * innovation)(0, 0);
         const Scalar det = cov.determinant();
         if (!(det > Scalar(0))) return Scalar(0);
-        const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, MeasDim) * det);
+        const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, Scalar(MeasDim)) * det);
         return std::exp(exponent) / normalizer;
     }
 

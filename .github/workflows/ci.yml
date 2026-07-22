@@ -77,14 +77,15 @@ jobs:
 
       # Warnings-as-errors, added only after Phase 1 (docs/PRODUCTION_ROADMAP.md
       # P0 items 3-4) confirmed include/augur/ itself is 0 warnings under
-      # -Wall -Wextra -Wpedantic. -Wno-c2y-extensions is a narrow, deliberate
-      # exemption: Catch2's own TEST_CASE macro uses __COUNTER__, which this
-      # environment's clang flags at every macro-expansion site (135
-      # occurrences, all inside tests/unit/*.cpp, none in include/augur/ --
-      # see that P0 item's write-up) -- exempting just that diagnostic keeps
-      # -Werror meaningful (a real new warning anywhere still fails the
-      # build) without the build failing on a third-party dependency's own
-      # internals that this repo has no way to fix.
+      # -Wall -Wextra -Wpedantic. AUGUR_WARNINGS_AS_ERRORS applies strict
+      # flags via target_compile_options() to augur's own example/test
+      # targets ONLY (see CMakeLists.txt's augur_apply_strict_warnings) --
+      # deliberately NOT a global CMAKE_CXX_FLAGS override, which would
+      # also hold CPM-fetched dependencies (Catch2, glm, boost_pfr) to a
+      # bar their own vendored source has no obligation to meet, and would
+      # silently replace CMake's own per-compiler defaults (e.g. MSVC's
+      # /EHsc) instead of adding to them -- both of which broke the first,
+      # global-override version of this change in practice.
       - name: Configure (Unix)
         if: runner.os != 'Windows'
         env:
@@ -95,7 +96,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DAUGUR_BUILD_TESTS=ON
           -DAUGUR_BUILD_EXAMPLES=ON
-          -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror -Wno-c2y-extensions"
+          -DAUGUR_WARNINGS_AS_ERRORS=ON
 
       - name: Configure (Windows, MSVC)
         if: runner.os == 'Windows' && matrix.toolset == ''
@@ -103,7 +104,7 @@ jobs:
           cmake -B build
           -DAUGUR_BUILD_TESTS=ON
           -DAUGUR_BUILD_EXAMPLES=ON
-          -DCMAKE_CXX_FLAGS="/W4 /WX"
+          -DAUGUR_WARNINGS_AS_ERRORS=ON
 
       - name: Configure (Windows, ClangCL)
         if: runner.os == 'Windows' && matrix.toolset != ''
@@ -111,7 +112,7 @@ jobs:
           cmake -B build -T ${{ matrix.toolset }}
           -DAUGUR_BUILD_TESTS=ON
           -DAUGUR_BUILD_EXAMPLES=ON
-          -DCMAKE_CXX_FLAGS="/W4 /WX"
+          -DAUGUR_WARNINGS_AS_ERRORS=ON
 
       - name: Build (Unix)
         if: runner.os != 'Windows'

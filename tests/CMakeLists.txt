@@ -24,6 +24,7 @@ add_executable(augur_unit_tests
 )
 target_link_libraries(augur_unit_tests PRIVATE augur::augur Catch2::Catch2WithMain)
 target_include_directories(augur_unit_tests PRIVATE unit)
+augur_apply_strict_warnings(augur_unit_tests)
 
 include(CTest)
 add_test(NAME augur_unit_tests COMMAND augur_unit_tests)

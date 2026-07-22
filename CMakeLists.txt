@@ -15,11 +15,50 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(AUGUR_WITH_GLM       "Enable the glm interop layer (math/interop_glm.hpp)" ON)
-option(AUGUR_BUILD_EXAMPLES "Build the example programs under examples/"          ON)
-option(AUGUR_BUILD_TESTS    "Build unit tests under tests/"                       OFF)
+option(AUGUR_WITH_GLM             "Enable the glm interop layer (math/interop_glm.hpp)"   ON)
+option(AUGUR_BUILD_EXAMPLES       "Build the example programs under examples/"            ON)
+option(AUGUR_BUILD_TESTS          "Build unit tests under tests/"                         OFF)
+option(AUGUR_WARNINGS_AS_ERRORS   "Build augur's own examples/tests with -Werror/-WX"     OFF)
 
 include(cmake/get_cpm.cmake)
+
+# --------------------------------------------------------------------
+# Applies strict warnings-as-errors to ONE of augur's own targets
+# (an example or the test binary) -- deliberately via
+# target_compile_options() on that target alone, never via a global
+# CMAKE_CXX_FLAGS override. A global override applies to EVERY target
+# in the whole build, CPM-fetched dependencies included (Catch2, glm,
+# boost_pfr) -- their vendored source isn't augur's to hold to this
+# bar, and augur has no ability to fix a warning inside someone else's
+# header. It also silently replaces CMake's own sensible per-compiler
+# defaults (e.g. MSVC's /EHsc, needed for correct exception unwind
+# semantics) rather than adding to them. target_compile_options() on a
+# specific target has neither problem.
+#
+# -Wno-unknown-warning-option and -Wno-c2y-extensions are a real,
+# narrow exemption, not a blanket loophole: Catch2's TEST_CASE macro
+# uses __COUNTER__, which some Clang versions flag under -Wpedantic at
+# the macro's expansion site (i.e. inside augur's own tests/unit/*.cpp,
+# even though the macro is Catch2's) -- confirmed harmless and specific
+# to that one diagnostic (docs/PRODUCTION_ROADMAP.md Phase 1's P0
+# warnings audit). -Wno-unknown-warning-option is there because not
+# every Clang version even recognizes -Wc2y-extensions as a name to
+# disable -- without it, an older Clang treats "unknown warning option"
+# itself as the -Werror failure, which is a worse problem than the one
+# being suppressed.
+# --------------------------------------------------------------------
+function(augur_apply_strict_warnings target)
+  if(NOT AUGUR_WARNINGS_AS_ERRORS)
+    return()
+  endif()
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /WX)
+  else()
+    target_compile_options(${target} PRIVATE
+      -Wall -Wextra -Wpedantic -Werror
+      -Wno-unknown-warning-option -Wno-c2y-extensions)
+  endif()
+endfunction()
 
 # --------------------------------------------------------------------
 # Eigen: header-only, so DOWNLOAD_ONLY -- we never want Eigen's own

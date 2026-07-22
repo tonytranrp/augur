@@ -144,7 +144,7 @@ public:
 
                 const Scalar exponent = Scalar(-0.5) * (innovation.transpose() * S_inv * innovation)(0, 0);
                 const Scalar likelihood = (det_s > Scalar(0))
-                    ? std::exp(exponent) / std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, MeasDim) * det_s)
+                    ? std::exp(exponent) / std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, Scalar(MeasDim)) * det_s)
                     : Scalar(0);
                 const Scalar qi = config_.detection_probability * c.weight * likelihood;
 
