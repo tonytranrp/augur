@@ -208,3 +208,103 @@ TEST_CASE("joint_probabilistic_data_association gives an isolated track (no gate
     REQUIRE_THAT(result.beta_missed(1), WithinAbs(1.0f, 1e-6f));
     REQUIRE_THAT(result.beta(1, 0), WithinAbs(0.0f, 1e-6f));
 }
+
+TEST_CASE("pdaf_update matches an independently-computed Gaussian-mixture reference", "[track][association][pdaf]") {
+    // docs/IMPROVEMENT_PLAN.md's finding: JPDA computes real beta/
+    // beta_missed values that nothing previously turned into an actual
+    // corrected estimate. Reference values computed independently (ad
+    // hoc python3+numpy, per .claude/rules/testing.md) two ways: the
+    // closed-form moment-match formula this function implements, AND a
+    // brute-force Gaussian mixture (treating "missed" plus each
+    // detection hypothesis as its own weighted component and computing
+    // that mixture's TRUE mean/covariance directly) -- the two agreed
+    // to float64 machine epsilon (4e-16) before this was written in C++.
+    using augur::track::JpdaResult;
+    using augur::track::pdaf_update;
+
+    Vector<double, 4> x_pred{1.0, 2.0, 0.5, -0.3};
+    Matrix<double, 4> P_pred = Matrix<double, 4>::Zero();
+    P_pred(0, 0) = 2.0; P_pred(1, 1) = 2.0; P_pred(2, 2) = 1.0; P_pred(3, 3) = 1.0;
+    Matrix<double, 2, 4> H = Matrix<double, 2, 4>::Zero();
+    H(0, 0) = 1; H(1, 1) = 1;
+    Matrix<double, 2> R = Matrix<double, 2>::Identity() * 0.3;
+
+    FixedVector<Vector<double, 2>, 4> detections;
+    detections.push_back({1.3, 2.4});
+    detections.push_back({0.6, 1.5});
+
+    JpdaResult<double, 4, 4> jr;
+    jr.beta.setZero();
+    jr.beta_missed.setZero();
+    jr.beta(0, 0) = 0.5;
+    jr.beta(0, 1) = 0.3;
+    jr.beta_missed(0) = 0.2;
+
+    const auto result = pdaf_update<double, 2, 4, 4, 4>(x_pred, P_pred, H, R, detections, jr, 0);
+
+    REQUIRE_THAT(result.state(0), WithinAbs(1.02608696, 1e-6));
+    REQUIRE_THAT(result.state(1), WithinAbs(2.04347826, 1e-6));
+    REQUIRE_THAT(result.state(2), WithinAbs(0.5, 1e-9));
+    REQUIRE_THAT(result.state(3), WithinAbs(-0.3, 1e-9));
+
+    REQUIRE_THAT(result.covariance(0, 0), WithinAbs(0.67833648, 1e-6));
+    REQUIRE_THAT(result.covariance(0, 1), WithinAbs(0.08960302, 1e-6));
+    REQUIRE_THAT(result.covariance(1, 1), WithinAbs(0.72400756, 1e-6));
+    // vx/vy are unobserved (H doesn't read them) and unweighted by any
+    // detection here, so their prediction-stage variance must survive untouched.
+    REQUIRE_THAT(result.covariance(2, 2), WithinAbs(1.0, 1e-9));
+    REQUIRE_THAT(result.covariance(3, 3), WithinAbs(1.0, 1e-9));
+}
+
+TEST_CASE("pdaf_update reduces exactly to the prediction when beta_missed=1", "[track][association][pdaf]") {
+    using augur::track::JpdaResult;
+    using augur::track::pdaf_update;
+
+    Vector<double, 4> x_pred{1.0, 2.0, 0.5, -0.3};
+    Matrix<double, 4> P_pred = Matrix<double, 4>::Identity() * 2.0;
+    Matrix<double, 2, 4> H = Matrix<double, 2, 4>::Zero();
+    H(0, 0) = 1; H(1, 1) = 1;
+    Matrix<double, 2> R = Matrix<double, 2>::Identity() * 0.3;
+
+    JpdaResult<double, 4, 4> jr;
+    jr.beta.setZero();
+    jr.beta_missed.setZero();
+    jr.beta_missed(0) = 1.0;
+    FixedVector<Vector<double, 2>, 4> no_detections;
+
+    const auto result = pdaf_update<double, 2, 4, 4, 4>(x_pred, P_pred, H, R, no_detections, jr, 0);
+
+    REQUIRE_THAT((result.state - x_pred).norm(), WithinAbs(0.0, 1e-9));
+    REQUIRE_THAT((result.covariance - P_pred).norm(), WithinAbs(0.0, 1e-9));
+}
+
+TEST_CASE("pdaf_update reduces exactly to a plain KalmanFilter update at beta=1 for a single detection",
+          "[track][association][pdaf]") {
+    using augur::track::JpdaResult;
+    using augur::track::pdaf_update;
+
+    Vector<double, 4> x_pred{1.0, 2.0, 0.5, -0.3};
+    Matrix<double, 4> P_pred = Matrix<double, 4>::Identity() * 2.0;
+    Matrix<double, 2, 4> H = Matrix<double, 2, 4>::Zero();
+    H(0, 0) = 1; H(1, 1) = 1;
+    Matrix<double, 2> R = Matrix<double, 2>::Identity() * 0.3;
+
+    FixedVector<Vector<double, 2>, 4> one_detection;
+    one_detection.push_back({1.3, 2.4});
+
+    JpdaResult<double, 4, 4> jr;
+    jr.beta.setZero();
+    jr.beta_missed.setZero();
+    jr.beta(0, 0) = 1.0;
+
+    const auto result = pdaf_update<double, 2, 4, 4, 4>(x_pred, P_pred, H, R, one_detection, jr, 0);
+
+    const Matrix<double, 2> S = H * P_pred * H.transpose() + R;
+    const auto K = P_pred * H.transpose() * S.inverse();
+    const Vector<double, 2> y = one_detection[0] - H * x_pred;
+    const Vector<double, 4> x_plain = x_pred + K * y;
+    const Matrix<double, 4> P_plain = (Matrix<double, 4>::Identity() - K * H) * P_pred;
+
+    REQUIRE_THAT((result.state - x_plain).norm(), WithinAbs(0.0, 1e-9));
+    REQUIRE_THAT((result.covariance - P_plain).norm(), WithinAbs(0.0, 1e-9));
+}

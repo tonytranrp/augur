@@ -361,4 +361,81 @@ template <typename Scalar, int MeasDim, std::size_t MaxTracks, std::size_t MaxDe
     return result;
 }
 
+template <typename Scalar, int StateDim>
+struct PdafUpdate {
+    augur::math::Vector<Scalar, StateDim> state;
+    augur::math::Matrix<Scalar, StateDim> covariance;
+};
+
+// Probabilistic Data Association Filter update: turns a JpdaResult's
+// association probabilities into an actual corrected state estimate for
+// ONE track -- docs/IMPROVEMENT_PLAN.md's finding that
+// joint_probabilistic_data_association() computes real beta/beta_missed
+// values that nothing in the codebase previously consumed. A caller
+// loops over their own tracks calling this once per track, the same way
+// they'd already loop calling each track's own filter.predict()/
+// update() -- this is deliberately a standalone function, not wired
+// into TrackManager, matching this file's own existing "small composable
+// primitives" shape (TrackManager itself composes nearest_neighbor(),
+// it isn't fused into it either).
+//
+// Derived from first principles (Bar-Shalom & Fortmann, "Tracking and
+// Data Association," Academic Press, 1988, ch. 4 -- the original PDAF
+// paper) as a Gaussian-mixture moment-match: the SAME "weighted mean +
+// spread-of-means" pattern already trusted in imm/mixing.hpp::combine()
+// and gm_phd.hpp's merge step, not a new primitive. Verified ad hoc
+// (python3 + numpy, per .claude/rules/testing.md) against an independent
+// brute-force computation -- treating "missed" plus each detection
+// hypothesis as its own Gaussian mixture component (weight beta_missed/
+// beta_j, mean/covariance from a full per-hypothesis KF update) and
+// computing that mixture's TRUE mean/covariance directly -- agreeing to
+// float64 machine epsilon (4e-16), not just approximately. Also verified
+// both degenerate cases collapse EXACTLY (0.0 diff) to what they must:
+// beta_missed=1 (certain no detection) leaves state/covariance exactly
+// at the prediction; a single detection at beta=1 reduces exactly to a
+// plain KalmanFilter::update().
+//
+// H/R are passed directly (not read from a Filter) since
+// filters::Filter's interface has no H/R accessors (predict::track's
+// existing association gating already works around this the same way --
+// see this file's own "SCOPE" comment on track/track_manager.hpp).
+template <typename Scalar, int MeasDim, int StateDim, std::size_t MaxTracks, std::size_t MaxDetections>
+[[nodiscard]] PdafUpdate<Scalar, StateDim> pdaf_update(
+    const augur::math::Vector<Scalar, StateDim>& predicted_state,
+    const augur::math::Matrix<Scalar, StateDim>& predicted_covariance,
+    const augur::math::Matrix<Scalar, MeasDim, StateDim>& H,
+    const augur::math::Matrix<Scalar, MeasDim>& R,
+    const augur::utils::FixedVector<augur::math::Vector<Scalar, MeasDim>, MaxDetections>& detections,
+    const JpdaResult<Scalar, MaxTracks, MaxDetections>& jpda_result,
+    std::size_t track_index) {
+    // Hoisted once, same reasoning as filters/kalman.hpp::update()'s own
+    // identical fix -- K depends only on the prediction/H/R, not on
+    // which detection (if any) is being weighed, so it's shared across
+    // every hypothesis below rather than recomputed per detection.
+    const auto P_Ht = predicted_covariance * H.transpose();
+    const augur::math::Matrix<Scalar, MeasDim> S = H * P_Ht + R;
+    const augur::math::Matrix<Scalar, MeasDim> S_inv = augur::math::safe_inverse<Scalar, MeasDim>(S);
+    const auto K = P_Ht * S_inv;
+
+    augur::math::Vector<Scalar, MeasDim> y_bar = augur::math::Vector<Scalar, MeasDim>::Zero();
+    augur::math::Matrix<Scalar, MeasDim> spread = augur::math::Matrix<Scalar, MeasDim>::Zero();
+    for (std::size_t j = 0; j < detections.size(); ++j) {
+        const Scalar beta_j = jpda_result.beta(static_cast<int>(track_index), static_cast<int>(j));
+        if (!(beta_j > Scalar(0))) continue;
+        const augur::math::Vector<Scalar, MeasDim> y_j = detections[j] - H * predicted_state;
+        y_bar += beta_j * y_j;
+        spread += beta_j * (y_j * y_j.transpose());
+    }
+    spread -= y_bar * y_bar.transpose();
+
+    const Scalar beta_missed = jpda_result.beta_missed(static_cast<int>(track_index));
+    const augur::math::Matrix<Scalar, StateDim> P_certain =
+        predicted_covariance - K * P_Ht.transpose(); // (I-K*H)*P, same hoist as filters/kalman.hpp
+
+    PdafUpdate<Scalar, StateDim> result;
+    result.state = predicted_state + K * y_bar;
+    result.covariance = beta_missed * predicted_covariance + (Scalar(1) - beta_missed) * P_certain + K * spread * K.transpose();
+    return result;
+}
+
 } // namespace augur::track
