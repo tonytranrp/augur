@@ -10,6 +10,13 @@ jobs:
   build-matrix:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    # GitHub's own default is 6 hours -- far too long a leash for a genuine
+    # hang to run on before anyone notices. 25 minutes is generous headroom
+    # over the slowest legitimate run observed so far (a macOS Debug build
+    # that was still visibly making real progress, just erratically paced
+    # on a contended runner, when manually cancelled around the 20-minute
+    # mark -- its own Release sibling finished in 7.5 minutes).
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
