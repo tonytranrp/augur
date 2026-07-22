@@ -37,6 +37,7 @@
 #include <cstddef>
 #include "augur/filters/filter_concept.hpp"
 #include "augur/utils/fixed_vector.hpp"
+#include "augur/utils/ring_buffer.hpp"
 
 namespace augur::track {
 
@@ -79,7 +80,7 @@ public:
 
     void update(const Measurement& z) {
         filter_.update(z);
-        push_history(Entry{current_time_, filter_.state(), filter_.covariance(), z});
+        history_.push_back(Entry{current_time_, filter_.state(), filter_.covariance(), z});
     }
 
     // Normal, in-sequence step -- convenience wrapper over predict()+update().
@@ -107,7 +108,7 @@ public:
 
         augur::utils::FixedVector<Entry, MaxHistory> to_replay;
         for (std::size_t i = insert_after + 1; i < history_.size(); ++i) to_replay.push_back(history_[i]);
-        while (history_.size() > insert_after + 1) history_.swap_remove(history_.size() - 1);
+        while (history_.size() > insert_after + 1) history_.pop_back();
 
         Scalar prev_t = history_[insert_after].timestamp;
         replay_one(measurement_time, z, prev_t);
@@ -142,22 +143,13 @@ private:
     void replay_one(Scalar timestamp, const Measurement& z, Scalar& prev_t) {
         filter_.predict(timestamp - prev_t);
         filter_.update(z);
-        push_history(Entry{timestamp, filter_.state(), filter_.covariance(), z});
+        history_.push_back(Entry{timestamp, filter_.state(), filter_.covariance(), z});
         prev_t = timestamp;
-    }
-
-    void push_history(const Entry& entry) {
-        if (history_.full()) {
-            for (std::size_t i = 1; i < history_.size(); ++i) history_[i - 1] = history_[i];
-            history_[history_.size() - 1] = entry;
-        } else {
-            history_.push_back(entry);
-        }
     }
 
     Inner filter_;
     Scalar current_time_;
-    augur::utils::FixedVector<Entry, MaxHistory> history_;
+    augur::utils::RingBuffer<Entry, MaxHistory> history_;
 };
 
 } // namespace augur::track

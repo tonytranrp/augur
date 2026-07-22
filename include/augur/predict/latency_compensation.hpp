@@ -42,7 +42,7 @@
 #include <span>
 #include "augur/reflect/serialize.hpp"
 #include "augur/utils/assert.hpp"
-#include "augur/utils/fixed_vector.hpp"
+#include "augur/utils/ring_buffer.hpp"
 
 namespace augur::predict {
 
@@ -72,12 +72,7 @@ public:
     void record(Scalar timestamp, const State& state) {
         AUGUR_ASSERT(history_.empty() || timestamp >= history_[history_.size() - 1].timestamp,
                      "SnapshotBuffer::record: timestamps must be non-decreasing");
-        if (history_.full()) {
-            for (std::size_t i = 1; i < history_.size(); ++i) history_[i - 1] = history_[i];
-            history_[history_.size() - 1] = Snapshot{timestamp, state};
-        } else {
-            history_.push_back(Snapshot{timestamp, state});
-        }
+        history_.push_back(Snapshot{timestamp, state});
     }
 
     // Server-side rewind ("what did the shooting client actually see
@@ -140,7 +135,7 @@ public:
         const auto count = reader.template read<std::uint32_t>();
         if (reader.failed() || count > MaxHistory) return false;
 
-        augur::utils::FixedVector<Snapshot, MaxHistory> staged;
+        augur::utils::RingBuffer<Snapshot, MaxHistory> staged;
         for (std::uint32_t i = 0; i < count; ++i) {
             Snapshot snapshot{};
             if (!reflect::deserialize(snapshot, reader)) return false;
@@ -151,7 +146,7 @@ public:
     }
 
 private:
-    augur::utils::FixedVector<Snapshot, MaxHistory> history_;
+    augur::utils::RingBuffer<Snapshot, MaxHistory> history_;
 };
 
 // last_update_time: when the filter's state was last corrected by a
