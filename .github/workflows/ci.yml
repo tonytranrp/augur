@@ -168,3 +168,42 @@ jobs:
 
       - name: Build
         run: cmake --build build-android --parallel
+
+  sanitizers:
+    name: asan-ubsan
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # Turns docs/PRODUCTION_ROADMAP.md P0 item 4's one-off manual
+      # ASan/UBSan repro (a standalone file, never checked into the repo,
+      # verifying just joint_probabilistic_data_association() at full
+      # capacity) into something that runs on every push against the
+      # WHOLE test suite. Deliberately a GLOBAL CMAKE_CXX_FLAGS/
+      # CMAKE_EXE_LINKER_FLAGS override here, unlike the warnings-as-
+      # errors job -- ASan/UBSan want the entire linked binary
+      # instrumented for reliable coverage (including Catch2's own
+      # compiled library), not scoped to augur's own targets the way
+      # -Werror deliberately is (see CMakeLists.txt's
+      # augur_apply_strict_warnings comment for why that one differs).
+      # AUGUR_BUILD_EXAMPLES is left off: ctest is what this job checks,
+      # examples aren't part of it, and skipping them keeps this job
+      # focused and fast.
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DAUGUR_BUILD_TESTS=ON
+          -DAUGUR_BUILD_EXAMPLES=OFF
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build --parallel 3
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
