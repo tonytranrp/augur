@@ -50,7 +50,15 @@
 
 namespace augur::filters {
 
-template <models::MotionModel ModelT, int MeasDim>
+// MeasurementFnT is a template parameter, not hardcoded to
+// std::function -- defaulted to std::function<...> so every existing
+// call site is unaffected. See filters/extended_kalman.hpp's identical
+// change for the full reasoning (docs/IMPROVEMENT_PLAN.md measured
+// 2.09-2.31x overhead on isolated calls at UKF/particle-filter call
+// counts from std::function's type erasure specifically).
+template <models::MotionModel ModelT, int MeasDim,
+          typename MeasurementFnT = std::function<augur::math::Vector<typename ModelT::Scalar, MeasDim>(
+              const augur::math::Vector<typename ModelT::Scalar, ModelT::dimension>&)>>
 class UnscentedKalmanFilter {
 public:
     using Scalar = typename ModelT::Scalar;
@@ -63,7 +71,7 @@ public:
     using StateCovariance = augur::math::Matrix<Scalar, StateDim>;
     using Measurement = augur::math::Vector<Scalar, MeasDim>;
     using MeasurementCovariance = augur::math::Matrix<Scalar, MeasDim>;
-    using MeasurementFn = std::function<Measurement(const StateVector&)>;
+    using MeasurementFn = MeasurementFnT;
 
     struct Config {
         // alpha=1 (not the textbook-common 1e-3 -- see the file comment

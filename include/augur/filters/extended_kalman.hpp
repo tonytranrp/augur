@@ -21,7 +21,23 @@ namespace augur::filters {
 
 // MeasurementFn:   StateVector -> Measurement            (h(x))
 // MeasurementJac:  StateVector -> MeasurementMatrix (Jacobian of h at x)
-template <models::MotionModel ModelT, int MeasDim>
+//
+// MeasurementFnT/MeasurementJacobianFnT are template parameters, not
+// hardcoded to std::function -- defaulted to std::function<...> so
+// every existing call site (which never names them) is completely
+// unaffected, source- and behavior-compatible. docs/IMPROVEMENT_PLAN.md
+// measured real overhead from std::function's type erasure specifically
+// (~18% on a full update(), matching this project's own "prefer a
+// template parameter over a runtime flag for anything decided once"
+// convention -- imm::Estimator<Filters...>'s own zero-vtable design is
+// the same idea applied one level up). A caller who cares can now pass
+// their own lambda's type explicitly (e.g. via `decltype`) to get a
+// zero-overhead instantiation instead.
+template <models::MotionModel ModelT, int MeasDim,
+          typename MeasurementFnT = std::function<augur::math::Vector<typename ModelT::Scalar, MeasDim>(
+              const augur::math::Vector<typename ModelT::Scalar, ModelT::dimension>&)>,
+          typename MeasurementJacobianFnT = std::function<augur::math::Matrix<typename ModelT::Scalar, MeasDim, ModelT::dimension>(
+              const augur::math::Vector<typename ModelT::Scalar, ModelT::dimension>&)>>
 class ExtendedKalmanFilter {
 public:
     using Scalar = typename ModelT::Scalar;
@@ -33,8 +49,8 @@ public:
     using Measurement = augur::math::Vector<Scalar, MeasDim>;
     using MeasurementMatrix = augur::math::Matrix<Scalar, MeasDim, dimension>;
     using MeasurementCovariance = augur::math::Matrix<Scalar, MeasDim>;
-    using MeasurementFn = std::function<Measurement(const StateVector&)>;
-    using MeasurementJacobianFn = std::function<MeasurementMatrix(const StateVector&)>;
+    using MeasurementFn = MeasurementFnT;
+    using MeasurementJacobianFn = MeasurementJacobianFnT;
 
     ExtendedKalmanFilter(Model model,
                           StateVector initial_state,

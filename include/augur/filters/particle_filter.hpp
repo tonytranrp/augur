@@ -49,7 +49,16 @@
 
 namespace augur::filters {
 
-template <models::MotionModel ModelT, int MeasDim, std::size_t NumParticles>
+// MeasurementFnT is a template parameter, not hardcoded to
+// std::function -- defaulted to std::function<...> so every existing
+// call site is unaffected. See filters/extended_kalman.hpp's identical
+// change for the full reasoning (docs/IMPROVEMENT_PLAN.md measured up
+// to ~14us of pure type-erasure tax per ParticleFilter::update() at
+// 2000 particles, ~2.3x on isolated calls -- the type-erasure cost is
+// paid once per particle per update()).
+template <models::MotionModel ModelT, int MeasDim, std::size_t NumParticles,
+          typename MeasurementFnT = std::function<augur::math::Vector<typename ModelT::Scalar, MeasDim>(
+              const augur::math::Vector<typename ModelT::Scalar, ModelT::dimension>&)>>
 class ParticleFilter {
 public:
     using Scalar = typename ModelT::Scalar;
@@ -60,7 +69,7 @@ public:
     using StateVector = augur::math::Vector<Scalar, StateDim>;
     using StateCovariance = augur::math::Matrix<Scalar, StateDim>;
     using Measurement = augur::math::Vector<Scalar, MeasDim>;
-    using MeasurementFn = std::function<Measurement(const StateVector&)>;
+    using MeasurementFn = MeasurementFnT;
     using MeasurementCovariance = augur::math::Matrix<Scalar, MeasDim>;
 
     ParticleFilter(Model model,
