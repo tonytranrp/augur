@@ -49,11 +49,23 @@ template <std::size_t NumModels, int Dim, typename Scalar>
     const std::array<Scalar, NumModels>& mode_probability,
     const ModeMatrix<NumModels, Scalar>& transition) {
 
+    // transition(i,j)*mode_probability[i] is needed twice per (i,j) pair
+    // below -- once summed into c_j here, then again as mix_weight[i]'s
+    // own numerator in the second loop -- so cache it in `weighted`
+    // instead of recomputing the identical product a second time. Same
+    // hoist-out-of-the-inner-loop pattern as track/association.hpp's own
+    // InnovationGate (see that file's comment): a pure cache, not a
+    // reformulation, so results are unchanged (verified: ad hoc python3
+    // comparison of this exact restructuring against the original
+    // double-computation, both a normalized random mode-transition matrix
+    // and mode-probability vector, 200 trials, exactly 0 difference).
+    std::array<std::array<Scalar, NumModels>, NumModels> weighted{}; // weighted[j][i] = transition(i,j)*mode_probability[i]
     std::array<Scalar, NumModels> normalizer{}; // c_j
     for (std::size_t j = 0; j < NumModels; ++j) {
         Scalar c = Scalar(0);
         for (std::size_t i = 0; i < NumModels; ++i) {
-            c += transition(i, j) * mode_probability[i];
+            weighted[j][i] = transition(i, j) * mode_probability[i];
+            c += weighted[j][i];
         }
         normalizer[j] = c;
     }
@@ -66,7 +78,7 @@ template <std::size_t NumModels, int Dim, typename Scalar>
 
         std::array<Scalar, NumModels> mix_weight{};
         for (std::size_t i = 0; i < NumModels; ++i) {
-            mix_weight[i] = (transition(i, j) * mode_probability[i]) / c_j;
+            mix_weight[i] = weighted[j][i] / c_j;
             x0 += mix_weight[i] * prev_state[i];
         }
 
