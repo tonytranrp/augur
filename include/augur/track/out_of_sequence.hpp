@@ -40,25 +40,52 @@
 
 namespace augur::track {
 
+// filters::Filter-conforming (docs/IMPROVEMENT_PLAN.md: this previously
+// had no dimension, no split predict()/update(), no last_likelihood() --
+// compiler-proven, blocked composing OOSM with TrackManager/
+// imm::Estimator despite both being named use cases for it in this same
+// file's own comment). predict()/update() are the SAME two calls step()
+// already made internally, just now independently callable -- step()
+// becomes a convenience wrapper (kept for source compatibility) rather
+// than the only way in. history_ is only ever appended to from update()
+// (matching this file's own "post-update state/covariance" wording
+// above): a caller that predicts several times before ever updating
+// gets no history entry for any of the unconfirmed intermediate
+// predictions, exactly as before -- calling predict() then update() in
+// sequence (what step() does, and what imm::Estimator/TrackManager both
+// do) is bit-for-bit the same net effect as the original single-method
+// step(), since filter_.update() never reads current_time_, so
+// reordering current_time_'s own increment earlier (into predict())
+// changes nothing observable.
 template <filters::Filter Inner, std::size_t MaxHistory>
 class OutOfSequenceEstimator {
 public:
     using Scalar = typename Inner::Scalar;
+    using Model = typename Inner::Model;
     using Measurement = typename Inner::Measurement;
     using StateVector = typename Inner::StateVector;
     using StateCovariance = typename Inner::StateCovariance;
+    static constexpr std::size_t dimension = Inner::dimension;
 
     explicit OutOfSequenceEstimator(Inner filter, Scalar initial_time = Scalar(0))
         : filter_(std::move(filter)), current_time_(initial_time) {
         history_.push_back(Entry{initial_time, filter_.state(), filter_.covariance(), Measurement::Zero()});
     }
 
-    // Normal, in-sequence step.
-    void step(Scalar dt, const Measurement& z) {
+    void predict(Scalar dt) {
         filter_.predict(dt);
-        filter_.update(z);
         current_time_ += dt;
+    }
+
+    void update(const Measurement& z) {
+        filter_.update(z);
         push_history(Entry{current_time_, filter_.state(), filter_.covariance(), z});
+    }
+
+    // Normal, in-sequence step -- convenience wrapper over predict()+update().
+    void step(Scalar dt, const Measurement& z) {
+        predict(dt);
+        update(z);
     }
 
     // z was actually measured at measurement_time (< current_time_).
@@ -92,8 +119,17 @@ public:
 
     [[nodiscard]] const StateVector& state() const { return filter_.state(); }
     [[nodiscard]] const StateCovariance& covariance() const { return filter_.covariance(); }
+    [[nodiscard]] Scalar last_likelihood() const { return filter_.last_likelihood(); }
+    [[nodiscard]] const Model& model() const { return filter_.model(); }
     [[nodiscard]] Scalar current_time() const { return current_time_; }
     [[nodiscard]] const Inner& filter() const { return filter_; }
+
+    // Escape hatch required by filters::Filter -- e.g. for
+    // imm::Estimator's mixing step to overwrite state/covariance with a
+    // blended estimate between predictions. Deliberately does NOT touch
+    // history_ or current_time_: an external state overwrite isn't a
+    // "real" update this object itself made, so it isn't recorded as one.
+    void set_state(const StateVector& x, const StateCovariance& P) { filter_.set_state(x, P); }
 
 private:
     struct Entry {

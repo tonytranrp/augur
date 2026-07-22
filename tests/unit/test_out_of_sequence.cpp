@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "augur/augur.hpp"
+#include "augur/imm/estimator.hpp"
 #include "augur/track/out_of_sequence.hpp"
 
 using Catch::Matchers::WithinAbs;
@@ -17,6 +18,10 @@ namespace {
 using CV = augur::models::ConstantVelocity<float, 2>;
 using KF = augur::filters::KalmanFilter<CV, /*MeasDim=*/2>;
 using OOSM = augur::track::OutOfSequenceEstimator<KF, /*MaxHistory=*/8>;
+
+static_assert(augur::filters::Filter<OOSM>,
+              "docs/IMPROVEMENT_PLAN.md: previously blocked composing OOSM with "
+              "TrackManager/imm::Estimator despite both being named use cases for it");
 
 KF make_kf() {
     KF::StateVector x0 = KF::StateVector::Zero();
@@ -114,4 +119,43 @@ TEST_CASE("OutOfSequenceEstimator rejects a measurement at or after the current 
     est.step(dt, KF::Measurement{0.03f, 0.0f});
     REQUIRE_FALSE(est.insert_out_of_sequence(dt, KF::Measurement{0.0f, 0.0f}));
     REQUIRE_FALSE(est.insert_out_of_sequence(dt * 2.0f, KF::Measurement{0.0f, 0.0f}));
+}
+
+TEST_CASE("OutOfSequenceEstimator's split predict()/update() matches step() exactly", "[track][oosm][regression]") {
+    // The whole point of the Filter-conformance fix: predict() and
+    // update() must be independently callable (imm::Estimator/
+    // TrackManager both call them separately, never step()) and produce
+    // the IDENTICAL net effect as the combined step() convenience
+    // wrapper that already existed.
+    const float dt = 1.0f / 30.0f;
+    OOSM via_step{make_kf()};
+    OOSM via_split{make_kf()};
+
+    for (int i = 0; i < 5; ++i) {
+        const KF::Measurement z{0.01f * static_cast<float>(i), 0.02f * static_cast<float>(i)};
+        via_step.step(dt, z);
+        via_split.predict(dt);
+        via_split.update(z);
+    }
+
+    REQUIRE_THAT((via_step.state() - via_split.state()).norm(), WithinAbs(0.0f, 1e-6f));
+    REQUIRE_THAT((via_step.covariance() - via_split.covariance()).norm(), WithinAbs(0.0f, 1e-6f));
+    REQUIRE_THAT(via_step.current_time(), WithinAbs(via_split.current_time(), 1e-6f));
+    REQUIRE_THAT(via_step.last_likelihood(), WithinAbs(via_split.last_likelihood(), 1e-6f));
+}
+
+TEST_CASE("OutOfSequenceEstimator composes inside imm::Estimator", "[track][oosm][regression]") {
+    // The actual named use case from docs/IMPROVEMENT_PLAN.md's finding
+    // -- previously impossible to even compile.
+    using ImmOOSM = augur::imm::Estimator<OOSM, OOSM>;
+    ImmOOSM tracker{
+        OOSM{make_kf()}, OOSM{make_kf()},
+        augur::imm::ModeMatrix<2, float>::uniform(0.9f),
+    };
+    tracker.predict(1.0f / 30.0f);
+    tracker.update(KF::Measurement{0.03f, 0.0f});
+
+    const auto [x, P] = tracker.combined_state();
+    REQUIRE(x.allFinite());
+    REQUIRE(P.allFinite());
 }
