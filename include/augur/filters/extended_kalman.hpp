@@ -10,7 +10,6 @@
 // projection of a 3D position, range-only sonar/radar-style sensors,
 // etc.
 
-#include "augur/filters/filter_concept.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 #include <cmath>

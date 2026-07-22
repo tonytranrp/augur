@@ -44,7 +44,6 @@
 #include <cstddef>
 #include <functional>
 #include <numbers>
-#include "augur/filters/filter_concept.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 

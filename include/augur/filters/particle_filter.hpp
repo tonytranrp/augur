@@ -47,14 +47,12 @@
 // (filters::Filter's interface requires returning a reference to
 // something owned, not a computed temporary).
 
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <functional>
 #include <numbers>
 #include <random>
-#include "augur/filters/filter_concept.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 #include "augur/utils/xoshiro256pp.hpp"

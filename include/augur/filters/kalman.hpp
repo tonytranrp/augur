@@ -14,7 +14,6 @@
 // extended_kalman.hpp instead -- it reuses this same state-propagation
 // code and only swaps the update step.
 
-#include "augur/filters/filter_concept.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 #include <cmath>
