@@ -57,9 +57,8 @@ own top comment and `docs/ROADMAP.md` for specifics. Full tier breakdown:
   `latency_compensation.hpp` (`SnapshotBuffer` + `predict_to_render_time`)
   are both solid.
 - `include/augur/track/` — data association (GNN + JPDA), track lifecycle
-  management, out-of-sequence measurement handling, and sensor fusion are
-  solid; `gm_phd.hpp` is a flagged sketch (`extract_targets()` doesn't yet
-  split an above-weight-1 component into multiple targets).
+  management, out-of-sequence measurement handling, sensor fusion, and
+  GM-PHD are all solid.
 - `include/augur/reflect/`, `include/augur/plugin/` — the mechanisms that
   make this "open" rather than hardcoded: a reflection facade
   (`descriptor.hpp`) dispatching between a Boost.PFR backend (plain

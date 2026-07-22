@@ -241,7 +241,7 @@ unvalidated Kalman math is worse than not shipping it.
 `filters/particle_filter.hpp`, `imm/mode_matrix.hpp`, `imm/mixing.hpp`,
 `imm/estimator.hpp`, `predict/query.hpp`, `predict/latency_compensation.hpp`,
 `track/association.hpp`, `track/track_manager.hpp`,
-`track/out_of_sequence.hpp`, `track/fusion.hpp`, `reflect/` (all five files:
+`track/out_of_sequence.hpp`, `track/fusion.hpp`, `track/gm_phd.hpp`, `reflect/` (all five files:
 `descriptor.hpp`, `has_reflection.hpp`, `serialize.hpp`,
 `backends/pfr_backend.hpp`, `backends/vector_backend.hpp`),
 `plugin/concepts.hpp`, `plugin/registry.hpp`, all of `utils/`. Covered by
@@ -262,10 +262,7 @@ can be noisy under repeated mixing — see that item's write-up for specifics);
 `filters/adaptive/sage_husa.hpp` (docs/ROADMAP.md item 2 — the eigenvalue-
 flooring fix for the known divergence failure mode is verified, but the
 implementation assumes a direct-position measurement model, stated in its
-own file comment); `track/gm_phd.hpp` (docs/ROADMAP.md item 7 — the update/
-merge math is verified, but `extract_targets()` doesn't yet split a
-much-higher-than-1-weight component into multiple targets, a stated,
-not-yet-implemented refinement).
+own file comment).
 
 All roadmap items with a dedicated stub file now have a status recorded
 directly in `docs/ROADMAP.md` — see that file rather than a stale list here.

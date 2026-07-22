@@ -87,12 +87,12 @@ Every non-trivial file is honest, in its own top comment, about its tier:
   extended_kalman,unscented_kalman,particle_filter}.hpp`, all of `imm/`
   except the heterogeneous-mixing files below, `predict/{query,
   latency_compensation}.hpp`, `track/{association,track_manager,
-  out_of_sequence,fusion}.hpp`, `reflect/`, `plugin/`, all of `utils/`): no
-  special marker — comments explain rationale, not caveats.
+  out_of_sequence,fusion,gm_phd}.hpp`, `reflect/`, `plugin/`, all of
+  `utils/`): no special marker — comments explain rationale, not caveats.
 - **Flagged sketch** (`models/current_statistical.hpp`
   + `filters/current_statistical_filter.hpp`, `imm/{augmented_layout,
   heterogeneous_mixing,heterogeneous_estimator}.hpp`,
-  `filters/adaptive/sage_husa.hpp`, `track/gm_phd.hpp`): compiles and
+  `filters/adaptive/sage_husa.hpp`): compiles and
   satisfies its concept, but a named part is a known simplification. Marked
   with a `ROADMAP MODEL --` line at the top of the file comment, naming
   exactly which part is simplified and citing the source for the real
