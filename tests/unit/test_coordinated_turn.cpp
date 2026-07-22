@@ -64,15 +64,30 @@ TEST_CASE("CoordinatedTurn::jacobian matches finite-difference at the exact stat
     augur_test::check_jacobian_matches_finite_difference(model, x0, 1.0f / 30.0f);
 }
 
-TEST_CASE("CoordinatedTurn::jacobian matches finite-difference across a range of turn rates", "[models][ct]") {
+TEST_CASE("CoordinatedTurn::jacobian matches finite-difference across a range of turn rates and step sizes",
+          "[models][ct][regression]") {
+    // Varying dt, not just omega, is deliberate: a SECOND small-omega
+    // jacobian bug (F(2,3)/F(3,2) silently left at 0 instead of
+    // ∓sin(omega*dt), a first-order term -- see the fix's own comment in
+    // models/coordinated_turn.hpp) went uncaught by this test when it
+    // only swept omega at a single fixed dt=1/30, because the resulting
+    // error (~0.005, mpmath-verified) happened to land just under
+    // test_helpers.hpp's default 0.01 tolerance at that specific dt. At
+    // a larger dt (still a realistic value -- a coasting track between
+    // detections easily goes a full second without an update), the same
+    // bug's error grows to ~0.19, nowhere near marginal. Sweeping dt
+    // catches this class of "correct at the repo's one hardcoded test
+    // parameter, wrong elsewhere" bug instead of re-encoding the same
+    // blind spot.
     using CT = augur::models::CoordinatedTurn<float>;
     CT model{1.0f, 0.1f};
-    const float dt = 1.0f / 30.0f;
 
-    for (float omega : {-3.0f, -0.5f, -0.15f, -0.01f, 0.0f, 0.01f, 0.15f, 0.5f, 3.0f}) {
-        CT::State x0;
-        x0 << 0.5f, -0.3f, 1.2f, -0.7f, omega;
-        augur_test::check_jacobian_matches_finite_difference(model, x0, dt);
+    for (float dt : {1.0f / 30.0f, 0.1f, 1.0f}) {
+        for (float omega : {-3.0f, -0.5f, -0.19f, -0.15f, -0.01f, 0.0f, 0.01f, 0.15f, 0.19f, 0.5f, 3.0f}) {
+            CT::State x0;
+            x0 << 0.5f, -0.3f, 1.2f, -0.7f, omega;
+            augur_test::check_jacobian_matches_finite_difference(model, x0, dt);
+        }
     }
 }
 
