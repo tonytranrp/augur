@@ -135,6 +135,66 @@ TEST_CASE("GmPhdFilter::prune_and_merge discards components below the weight thr
     REQUIRE_THAT(filter.components()[0].weight, WithinAbs(0.9f, 1e-4f));
 }
 
+TEST_CASE("GmPhdFilter::extract_targets emits round(weight) duplicate-mean targets for a high-weight component",
+          "[track][gm_phd][regression]") {
+    // docs/IMPROVEMENT_PLAN.md's exact worked example: three close
+    // weight-0.9 components merge (via prune_and_merge's own Mahalanobis
+    // moment-matching, already covered by a separate test above) into
+    // one weight-2.7 component. extract_targets() must now report 3
+    // targets (round(2.7)=3), matching the field's own standard
+    // convention (Vo & Ma 2006) for a component representing several
+    // overlapping targets -- not 1, which the previous implementation
+    // returned regardless of how far above 1 the weight was.
+    PHD::Config config;
+    config.merge_mahalanobis_threshold = 4.0f;
+    config.prune_weight_threshold = 1e-6f;
+    config.max_components_after_prune = 32;
+    PHD filter{CV{1.0f}, make_H(), PHD::MeasurementCovariance::Identity() * 0.1f, config};
+
+    augur::utils::FixedVector<PHD::GaussianComponent, 8> birth;
+    for (int i = 0; i < 3; ++i) {
+        PHD::GaussianComponent c;
+        c.weight = 0.9f;
+        c.mean = PHD::State::Zero();
+        c.mean(0) = 0.05f * static_cast<float>(i); // three components very close together
+        c.covariance = PHD::StateCovariance::Identity();
+        birth.push_back(c);
+    }
+    filter.predict(0.0f, birth);
+    filter.prune_and_merge();
+
+    REQUIRE(filter.components().size() == 1);
+    REQUIRE_THAT(filter.components()[0].weight, WithinAbs(2.7f, 1e-4f));
+
+    const auto targets = filter.extract_targets<8>(0.5f);
+    REQUIRE(targets.size() == 3);
+    for (const auto& t : targets) {
+        REQUIRE_THAT(t.weight, WithinAbs(2.7f, 1e-4f)); // all 3 share the identical mean/covariance -- a known limitation of the technique itself
+        REQUIRE_THAT((t.mean - filter.components()[0].mean).norm(), WithinAbs(0.0f, 1e-6f));
+    }
+}
+
+TEST_CASE("GmPhdFilter::extract_targets still emits exactly 1 target for a component that rounds to 0",
+          "[track][gm_phd][regression]") {
+    // A component that clears weight_threshold but rounds to 0 (a real
+    // case whenever weight_threshold < 0.5) must still emit exactly 1 --
+    // passing the threshold at all means "this represents a real
+    // target," never zero.
+    PHD::Config config;
+    PHD filter{CV{1.0f}, make_H(), PHD::MeasurementCovariance::Identity() * 0.1f, config};
+
+    augur::utils::FixedVector<PHD::GaussianComponent, 8> birth;
+    PHD::GaussianComponent c;
+    c.weight = 0.3f; // rounds to 0, but should still pass a 0.2 threshold as exactly 1 target
+    c.mean = PHD::State::Zero();
+    c.covariance = PHD::StateCovariance::Identity();
+    birth.push_back(c);
+    filter.predict(0.0f, birth);
+
+    const auto targets = filter.extract_targets<8>(0.2f);
+    REQUIRE(targets.size() == 1);
+}
+
 TEST_CASE("GmPhdFilter extract_targets and a full predict/update/prune cycle track two separated targets",
           "[track][gm_phd][regression]") {
     PHD::Config config;

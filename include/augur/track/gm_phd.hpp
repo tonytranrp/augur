@@ -232,17 +232,38 @@ public:
 
     // Components at or above weight_threshold each represent an
     // estimated real target (a weight near 1 means "very likely exactly
-    // one target here"). This returns one target per qualifying
-    // component; it does not split a component whose weight is well
-    // above 1 into multiple targets (a documented refinement, not
-    // implemented -- see docs/ROADMAP.md item 7's status note).
+    // one target here"). A component whose weight is well above 1 --
+    // several closely-overlapping targets that prune_and_merge() folded
+    // into one Gaussian, since it only merges components within its own
+    // Mahalanobis threshold, with no upper bound on how many can stack
+    // up -- now emits round(weight) copies instead of exactly one,
+    // per the field's own standard convention (Vo & Ma 2006, the same
+    // paper this file's own reference above already cites for the core
+    // filter): duplicate-mean emission, not a k-means/covariance-split
+    // scheme. Docs/IMPROVEMENT_PLAN.md's own worked example: three
+    // close weight-0.9 births merge to one weight-2.7 component;
+    // round(2.7)=3 emits 3 targets (all sharing the identical mean/
+    // covariance -- a known limitation of the technique itself, not a
+    // shortcoming of implementing it, since the merged Gaussian genuinely
+    // has no information distinguishing the individual targets it
+    // represents). A component that passes weight_threshold but rounds
+    // to 0 (a real possibility whenever weight_threshold is itself set
+    // below 0.5) still emits exactly 1 -- passing the threshold at all
+    // means "this represents a real target," never zero.
+    //
+    // MaxOut may need to be sized larger than num_predicted_components
+    // to accommodate this: a single high-weight component can now
+    // account for more than one output slot.
     template <std::size_t MaxOut>
     [[nodiscard]] augur::utils::FixedVector<GaussianComponent, MaxOut> extract_targets(Scalar weight_threshold) const {
         augur::utils::FixedVector<GaussianComponent, MaxOut> out;
         for (const auto& c : components_) {
             if (c.weight < weight_threshold) continue;
-            AUGUR_ASSERT(!out.full(), "GmPhdFilter::extract_targets: output capacity exceeded");
-            out.push_back(c);
+            const auto copies = std::max(1, static_cast<int>(std::lround(c.weight)));
+            for (int i = 0; i < copies; ++i) {
+                AUGUR_ASSERT(!out.full(), "GmPhdFilter::extract_targets: output capacity exceeded");
+                out.push_back(c);
+            }
         }
         return out;
     }

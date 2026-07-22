@@ -321,10 +321,14 @@ along (correct value 2.00155) — a good example of why "verify test suite
 second" (`.claude/rules/testing.md`) matters even when the *first*
 verification step was ad hoc Python. `MaxComponents` must be sized for the
 worst single `update()` call (`num_predicted * (1 + num_detections)`), not
-long-run steady state — stated directly in the file. `extract_targets()`
-returns one target per component above threshold; splitting a
-much-higher-than-1 weight component into multiple targets is a documented,
-not-yet-implemented refinement. `examples/09_gm_phd` tracks two targets
+long-run steady state — stated directly in the file. **Update**
+(docs/IMPROVEMENT_PLAN.md): `extract_targets()` originally returned one
+target per component above threshold regardless of how far above 1 its
+weight was; now emits `round(weight)` duplicate-mean targets per
+component, the field's own standard convention (Vo & Ma 2006) for this
+exact situation, verified against the worked example three close
+weight-0.9 births merging to one weight-2.7 component correctly
+reports 3 targets, not 1. `examples/09_gm_phd` tracks two targets
 (one appearing partway through) with no explicit data association at all.
 
 ## Real-time systems integration
