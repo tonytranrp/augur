@@ -4,6 +4,7 @@
 # who just want the library never pay for a test framework dependency.
 
 add_executable(augur_unit_tests
+    unit/test_xoshiro256pp.cpp
     unit/test_fixed_vector.cpp
     unit/test_safe_inverse.cpp
     unit/test_plugin_registry.cpp

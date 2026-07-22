@@ -11,10 +11,21 @@
 // samples a process-noise vector per particle (Cholesky factor of
 // model.process_noise(dt) applied to independent standard normals) --
 // every other filter here is a deterministic function of its inputs.
-// Uses <random> (std::mt19937, std::normal_distribution) rather than
-// pulling in a new dependency; the engine is owned per-instance and
-// seeded at construction, so behavior is reproducible given the same
-// seed and detection sequence.
+// Uses utils/xoshiro256pp.hpp's hand-vendored Xoshiro256PlusPlus engine
+// + StandardNormalSampler, not <random>'s std::mt19937_64 +
+// std::normal_distribution -- docs/IMPROVEMENT_PLAN.md measured
+// xoshiro256++ 1.4-1.8x faster per sample and ~200x faster to construct
+// (construction cost matters for frequent spawn/despawn of short-lived
+// particle-filtered entities), and, separately, confirmed by compiling
+// and diffing real output that std::normal_distribution's actual
+// OUTPUT genuinely diverges between standard library implementations
+// (libc++, the stdlib Android NDK uses, vs. MSVC STL) even given an
+// identical engine and seed -- a real cross-platform determinism hazard
+// for a library that's explicitly meant to build identically on both.
+// The engine is owned per-instance and seeded at construction, so
+// behavior is reproducible given the same seed and detection sequence,
+// same as before -- and now that reproducibility also HOLDS across
+// platforms, which it did not with std::normal_distribution.
 //
 // Algorithm verified end-to-end (ad hoc python3 + numpy, per
 // .claude/rules/testing.md) against a KalmanFilter baseline on a linear
@@ -46,6 +57,7 @@
 #include "augur/filters/filter_concept.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
+#include "augur/utils/xoshiro256pp.hpp"
 
 namespace augur::filters {
 
@@ -204,8 +216,8 @@ private:
     Model model_;
     MeasurementFn h_;
     MeasurementCovariance R_;
-    std::mt19937_64 rng_;
-    std::normal_distribution<Scalar> normal_{Scalar(0), Scalar(1)};
+    augur::utils::Xoshiro256PlusPlus rng_;
+    augur::utils::StandardNormalSampler<Scalar> normal_;
     std::array<Particle, NumParticles> particles_;
     StateVector x_ = StateVector::Zero();
     StateCovariance P_ = StateCovariance::Identity();
