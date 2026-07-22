@@ -115,3 +115,32 @@ jobs:
       - name: Test (Windows)
         if: runner.os == 'Windows'
         run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
+
+  android-ndk:
+    name: android-ndk-arm64-v8a
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # Confirms docs/GETTING_STARTED.md's own documented invocation
+      # actually cross-compiles, not just that it reads plausibly.
+      # AUGUR_BUILD_TESTS is deliberately left OFF: an x86_64 CI runner
+      # can't execute arm64-v8a binaries, so a cross-compiled test binary
+      # would just be dead weight. AUGUR_BUILD_EXAMPLES=ON is real signal
+      # though -- it confirms application-style code that pulls in
+      # multiple augur headers together (not just the interface stub)
+      # actually cross-compiles clean. ANDROID_NDK_LATEST_HOME is
+      # GitHub's own documented env var for the NDK preinstalled on
+      # ubuntu-latest runners -- no separate NDK download/install step
+      # needed.
+      - name: Configure
+        run: >
+          cmake -B build-android
+          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake
+          -DANDROID_ABI=arm64-v8a
+          -DANDROID_PLATFORM=android-24
+          -DAUGUR_BUILD_EXAMPLES=ON
+
+      - name: Build
+        run: cmake --build build-android --parallel
