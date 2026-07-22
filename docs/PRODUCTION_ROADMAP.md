@@ -258,6 +258,20 @@ began.
   test.~~ Done in Phase 1 itself (P0 item 5), not deferred to here —
   `tests/unit/test_heterogeneous_imm.cpp` already locks in the fix.
 
+**Status**: all three pieces done, confirmed via real pushes (not just
+written). `benchmarks/` (Google Benchmark, `AUGUR_BUILD_BENCHMARKS` CMake
+option) covers `KalmanFilter::predict/update`, `imm::Estimator::predict/
+update/combined_state`, and `HeterogeneousEstimator`'s expand/restrict
+transforms individually plus a `BM_ThreeFilters_PredictOnly_CVCACT`
+baseline (see `benchmarks/bench_heterogeneous.cpp`'s file comment for why
+that baseline, not an `imm::Estimator` comparison, is the correct one
+given same-order-only mixing) — confirmed the ~2x `HeterogeneousEstimator`
+mixing overhead `docs/IMPROVEMENT_PLAN.md` measured separately.
+Finite-difference Jacobian coverage extended to the one motion model that
+didn't already have it (`ConstantAcceleration`; `CoordinatedTurn`/
+`Singer`/`CurrentStatistical`/`ConstantVelocity` already did). CI run
+`29893382220` (commit `772550d`) green across the full matrix.
+
 ### Phase 4 — Packaging and distribution
 - `install()`/`export()` rules in `CMakeLists.txt` so
   `find_package(augur)` works for consumers who don't want CPM.
