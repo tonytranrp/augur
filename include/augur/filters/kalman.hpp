@@ -54,13 +54,26 @@ public:
 
     void update(const Measurement& z) {
         const Measurement y = z - H_ * x_; // innovation
-        const MeasurementCovariance S = H_ * P_ * H_.transpose() + R_;
+        // Hoisted once, reused three ways below -- the original formula
+        // computed P*H^T twice (once inline for S, once inline for K)
+        // and separately materialized a full StateDim identity matrix
+        // for P_ = (I-K*H)*P_. Measured 1.24x speedup on the complete
+        // update() this way (docs/IMPROVEMENT_PLAN.md), state output
+        // bit-identical, covariance differing only at the float32 noise
+        // floor -- verified ad hoc (python3+numpy, per
+        // .claude/rules/testing.md) before touching this file.
+        const auto P_Ht = P_ * H_.transpose();
+        const MeasurementCovariance S = H_ * P_Ht + R_;
         const MeasurementCovariance S_inv = augur::math::safe_inverse<Scalar, MeasDim>(S);
-        const auto K = P_ * H_.transpose() * S_inv; // Kalman gain
+        const auto K = P_Ht * S_inv; // Kalman gain
 
         x_ = x_ + K * y;
-        const StateCovariance I = StateCovariance::Identity();
-        P_ = (I - K * H_) * P_;
+        // (I-K*H)*P == P - K*(H*P); H*P == (P*H^T)^T since P is
+        // symmetric by construction (predict()'s F*P*F^T + Q preserves
+        // it) -- reuses P_Ht above via .transpose() instead of a fresh
+        // H_*P_ product, and avoids ever materializing (I-K*H) as its
+        // own StateDim x StateDim matrix.
+        P_ -= K * P_Ht.transpose();
 
         last_likelihood_ = gaussian_likelihood(y, S, S_inv);
     }

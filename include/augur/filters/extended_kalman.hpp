@@ -58,13 +58,23 @@ public:
     void update(const Measurement& z) {
         const MeasurementMatrix H = H_fn_(x_);
         const Measurement y = z - h_(x_);
-        const MeasurementCovariance S = H * P_ * H.transpose() + R_;
+        // Hoisted once, reused three ways below -- see
+        // filters/kalman.hpp::update()'s identical fix (this file's
+        // predict() already shares that one's structure) for the full
+        // reasoning and verification: computing P*H^T twice and
+        // materializing a full StateDim identity matrix is avoidable at
+        // no cost to correctness, measured 1.24x on the complete
+        // update() (docs/IMPROVEMENT_PLAN.md).
+        const auto P_Ht = P_ * H.transpose();
+        const MeasurementCovariance S = H * P_Ht + R_;
         const MeasurementCovariance S_inv = augur::math::safe_inverse<Scalar, MeasDim>(S);
-        const auto K = P_ * H.transpose() * S_inv;
+        const auto K = P_Ht * S_inv;
 
         x_ = x_ + K * y;
-        const StateCovariance I = StateCovariance::Identity();
-        P_ = (I - K * H) * P_;
+        // (I-K*H)*P == P - K*(H*P); H*P == (P*H^T)^T since P is
+        // symmetric -- reuses P_Ht via .transpose() instead of a fresh
+        // H*P_ product.
+        P_ -= K * P_Ht.transpose();
 
         const Scalar exponent = Scalar(-0.5) * (y.transpose() * S_inv * y)(0, 0);
         const Scalar det_s = S.determinant();
