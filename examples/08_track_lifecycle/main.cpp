@@ -6,6 +6,15 @@
 // gets Confirmed after enough hits), and a run of missed detections
 // for the first target (Coasting, then recovers) -- all through one
 // TrackManager, with no per-target bookkeeping written by hand.
+//
+// Watch target A's status across frames 6-11: Confirmed -> Coasting
+// (frames 6-8, the missed run) -> Tentative again (frames 9-10, even
+// though it's the very next frame with a match) -> Confirmed (frame 11).
+// That Tentative dip on reacquisition is deliberate, not a bug in this
+// example -- docs/IMPROVEMENT_PLAN.md found the ORIGINAL behavior
+// (instant Confirmed on the first post-coast match) could silently
+// transfer a track's id to a different real-world object that merely
+// passed the gate; see track_manager.hpp's own comment at the fix site.
 
 #include <cstdio>
 #include "augur/augur.hpp"

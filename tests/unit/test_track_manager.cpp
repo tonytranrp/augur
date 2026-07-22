@@ -69,10 +69,61 @@ TEST_CASE("TrackManager coasts a confirmed track through a single miss instead o
     manager.step(dets({}), 1.0f / 30.0f, make_filter_at); // miss -- should coast, not drop
     REQUIRE(manager.tracks().size() == 1);
     REQUIRE(manager.tracks()[0].status == augur::track::TrackStatus::Coasting);
+    const auto track_id = manager.tracks()[0].id;
 
-    manager.step(dets({z}), 1.0f / 30.0f, make_filter_at); // recovers
+    // A single post-coast match is NOT enough to reconfirm (see
+    // docs/IMPROVEMENT_PLAN.md's reacquisition finding, and the next
+    // test below for the full regression coverage) -- reacquisition
+    // needs the same fresh confirmation_hits a brand-new track does.
+    manager.step(dets({z}), 1.0f / 30.0f, make_filter_at); // first post-coast hit
     REQUIRE(manager.tracks().size() == 1);
+    REQUIRE(manager.tracks()[0].id == track_id); // same track, id unchanged
+    REQUIRE(manager.tracks()[0].status == augur::track::TrackStatus::Tentative);
+
+    manager.step(dets({z}), 1.0f / 30.0f, make_filter_at); // second post-coast hit (== confirmation_hits)
+    REQUIRE(manager.tracks().size() == 1);
+    REQUIRE(manager.tracks()[0].id == track_id);
     REQUIRE(manager.tracks()[0].status == augur::track::TrackStatus::Confirmed);
+}
+
+TEST_CASE("TrackManager refuses silent reacquisition: a coasting track needs fresh confirmation, not one match",
+          "[track][track_manager][regression]") {
+    // docs/IMPROVEMENT_PLAN.md's exact finding, reproduced as a unit
+    // test: real TrackManager (GNN), a track coasts one frame, then a
+    // DIFFERENT nearby object -- not the one that originally spawned
+    // this track -- passes the gate and matches it. Before this fix,
+    // that single match silently reconfirmed the track (status jumping
+    // straight back to Confirmed), transferring the track's id to the
+    // wrong real-world object with no visible signal. Now it must sit
+    // at Tentative, needing confirmation_hits consecutive matches --
+    // and, being Tentative, it's dropped outright on its very next miss
+    // rather than lingering as a falsely-Confirmed track.
+    TM::Config config;
+    config.confirmation_hits = 3;
+    config.coast_limit = 3;
+    TM manager{config};
+
+    const KF::Measurement original{0.0f, 0.0f};
+    for (int i = 0; i < 3; ++i) manager.step(dets({original}), 1.0f / 30.0f, make_filter_at);
+    REQUIRE(manager.tracks()[0].status == augur::track::TrackStatus::Confirmed);
+    const auto original_id = manager.tracks()[0].id;
+
+    manager.step(dets({}), 1.0f / 30.0f, make_filter_at); // original object leaves frame -- coast
+    REQUIRE(manager.tracks()[0].status == augur::track::TrackStatus::Coasting);
+
+    // A DIFFERENT object, close enough to gate, enters and matches.
+    const KF::Measurement different_object{0.3f, 0.2f};
+    manager.step(dets({different_object}), 1.0f / 30.0f, make_filter_at);
+    REQUIRE(manager.tracks().size() == 1);
+    REQUIRE(manager.tracks()[0].id == original_id); // still the same tracked id (minimal fix, not a re-ID)
+    REQUIRE(manager.tracks()[0].status == augur::track::TrackStatus::Tentative); // NOT silently Confirmed
+    REQUIRE(manager.tracks()[0].hit_streak == 1);
+
+    // Being Tentative, it now gets no coast grace -- if the "reacquisition"
+    // was in fact wrong and the object doesn't show up again, the track
+    // is dropped immediately rather than persisting under a stolen id.
+    manager.step(dets({}), 1.0f / 30.0f, make_filter_at);
+    REQUIRE(manager.tracks().size() == 0);
 }
 
 TEST_CASE("TrackManager drops a track once it exceeds the coast limit", "[track][track_manager]") {

@@ -99,10 +99,30 @@ public:
             auto& track = tracks_[a.track_index];
             track.filter->update(detections[a.detection_index]);
             track.missed_frames = 0;
+            // A match right after a coast is not proof of continuity --
+            // it only means SOMETHING passed the gate, which could be a
+            // different real-world object that happened to be nearby
+            // (docs/IMPROVEMENT_PLAN.md demonstrated exactly this on
+            // real pedestrian trajectory data: a track's id silently
+            // transferring to a different person after one coasted
+            // frame). Refuse instant reconfirmation on a single
+            // post-coast hit -- drop back to Tentative and require the
+            // SAME fresh confirmation_hits a brand-new track needs,
+            // exposing the uncertainty via `status` instead of hiding
+            // it. This narrows the identity-swap window from "one
+            // plausible match" to "confirmation_hits consecutive
+            // plausible matches, none of which the track's own gate
+            // rejects" -- a real, measurable improvement, not a complete
+            // fix (this is still gate-based, not appearance-based;
+            // Filter/measurement types carry no feature hook to do
+            // better today -- see docs/IMPROVEMENT_PLAN.md's own "fuller
+            // fix" note for what that would take).
+            if (track.status == TrackStatus::Coasting) {
+                track.status = TrackStatus::Tentative;
+                track.hit_streak = 0;
+            }
             ++track.hit_streak;
             if (track.status == TrackStatus::Tentative && track.hit_streak >= config_.confirmation_hits) {
-                track.status = TrackStatus::Confirmed;
-            } else if (track.status == TrackStatus::Coasting) {
                 track.status = TrackStatus::Confirmed;
             }
             track_matched[a.track_index] = true;
