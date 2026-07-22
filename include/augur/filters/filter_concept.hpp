@@ -35,7 +35,6 @@
 // they plugged into imm::Estimator. All 6 built-in filters already
 // implement it, so requiring it here breaks nothing existing.
 #include <concepts>
-#include "augur/core/concepts.hpp"
 #include "augur/math/backend.hpp"
 
 namespace augur::filters {
