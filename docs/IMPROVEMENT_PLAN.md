@@ -54,19 +54,21 @@ UKF/ParticleFilter's measurement callback is now a defaulted template
 parameter); #14 RNG determinism (xoshiro256++ + Box-Muller vendored,
 `std::normal_distribution` replaced). The "Infrastructure / build" section's
 `FilterRegistry::names()`/`unregister()` and the git.cmd PATH-shadowing
-documentation are also done.
+documentation are also done. The `out_of_sequence.hpp`/
+`latency_compensation.hpp` ring buffer is also done (`utils/ring_buffer.hpp`,
+measured 6.4x-106x faster than the shift-based code it replaced depending on
+`MaxHistory`, not just the negligible-at-current-scale case this document
+originally measured). The linear-drag ballistic model is also done
+(`models/linear_drag_ballistic.hpp`) — its own derivation caught a real
+hand-derivation algebra error via RK4 cross-check before any C++ was written.
 
-**Deliberately not done**, with reasoning (both explicitly "no urgency, land
+**Deliberately not done**, with reasoning (explicitly "no urgency, land
 whenever convenient" in this document's own sequencing, revisited and
-reaffirmed rather than silently dropped): the `out_of_sequence.hpp`/
-`latency_compensation.hpp` hand-duplicated shift-based ring buffer
-(promoting a real `RingBuffer<T,Capacity>` into `utils/` is still worth
-doing, but touches two already-solid, already-modified-this-round files for
-a benefit this document's own measurement called negligible at every
-`MaxHistory` value actually in use today); the two new motion models
-(linear-drag ballistic, quasi-3D coordinated turn) are pure additions, not
-fixes to anything existing, and were the lowest-priority tier in this
-document's own sequencing.
+reaffirmed rather than silently dropped): the quasi-3D coordinated-turn
+motion model is a pure addition, not a fix to anything existing, and was
+the lowest-priority single item in this document's own sequencing — the
+other three items in that same original tier (ring buffer, linear-drag
+ballistic, and everything above) are now done.
 
 Every implemented item has its own commit with a from-scratch verification
 methodology (ad hoc Python/numpy math checks before any C++, standalone
