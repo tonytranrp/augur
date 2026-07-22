@@ -148,10 +148,17 @@ private:
     std::array<Scalar, model_count> mode_probability_;
 };
 
-// Best-effort CTAD. Pack + trailing-fixed-argument deduction is
-// compiler/standard-version sensitive -- if your toolchain struggles
-// with `Estimator tracker{a, b, c, transition};`, fall back to the
-// always-correct explicit form `Estimator<A, B, C> tracker{...};`.
+// NOT functional -- confirmed, not hedged: verified (docs/IMPROVEMENT_PLAN.md)
+// on both clang 22.1.4 and MSVC 19.50 that this deduces an EMPTY
+// Filters pack instead of the intended one (a parameter pack followed
+// by a fixed trailing argument isn't a deduction context either
+// compiler resolves the way this guide intends), which then fails
+// Estimator's own `sizeof...(Filters) >= 2` static_assert before you
+// even reach a real error about your actual filter types. Always use
+// the explicit form instead: `Estimator<A, B, C> tracker{a, b, c,
+// transition};` -- every example and test in this library already does.
+// Left in place as a documented non-solution rather than deleted, so a
+// future attempt to fix CTAD here isn't starting from nothing.
 template <filters::Filter... Filters>
 Estimator(Filters..., ModeMatrix<sizeof...(Filters), typename std::tuple_element_t<0, std::tuple<Filters...>>::Scalar>)
     -> Estimator<Filters...>;

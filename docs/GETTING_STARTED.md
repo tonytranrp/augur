@@ -23,6 +23,34 @@ yourself:
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-march=native"
 ```
 
+### Windows note: "ambiguous argument 'HEAD0'" during configure
+
+If a fresh `cmake -B build` fails partway through fetching a git-tag-pinned
+dependency (Eigen, Boost.PFR) with an error containing `ambiguous argument
+'HEAD0'`, this is very likely a **PATH collision**, not a CPM/CMake bug: some
+other tool has put its own `git` shim earlier on `PATH` than your real Git
+for Windows install. npm is one common, concrete example — it ships a
+`git.cmd` shim that mangles `^` characters CPM's git commands rely on
+through `cmd.exe`'s own argument re-expansion, producing this exact symptom.
+
+Check which `git` CMake is actually finding:
+
+```sh
+where git
+```
+
+If the first hit isn't your real `Git\cmd\git.exe` or `Git\bin\git.exe`,
+point CMake at the real one explicitly rather than fighting your `PATH`:
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DGIT_EXECUTABLE="C:/Program Files/Git/cmd/git.exe"
+```
+
+(adjust the path to wherever Git for Windows is actually installed). See
+`cmake/get_cpm.cmake`'s own comment for the full history of this error —
+it also has a separate, unrelated cause (an old CPM.cmake version against a
+new CMake release) that the pinned version in this repo already avoids.
+
 ## Build — Android (via the NDK's own CMake toolchain)
 
 ```sh

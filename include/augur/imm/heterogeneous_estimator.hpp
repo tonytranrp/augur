@@ -127,8 +127,10 @@ private:
     Scalar padding_variance_;
 };
 
-// Best-effort CTAD -- see the identical caveat on imm::Estimator's own
-// deduction guide.
+// NOT functional -- see imm::Estimator's own deduction guide for the
+// identical, verified (not hedged) failure mode on both clang 22.1.4 and
+// MSVC 19.50. Always use the explicit form:
+// `HeterogeneousEstimator<A, B, C> tracker{a, b, c, transition};`.
 template <filters::Filter... Filters>
 HeterogeneousEstimator(Filters..., ModeMatrix<sizeof...(Filters), typename std::tuple_element_t<0, std::tuple<Filters...>>::Scalar>)
     -> HeterogeneousEstimator<Filters...>;
