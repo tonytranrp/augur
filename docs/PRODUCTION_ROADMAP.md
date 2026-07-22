@@ -193,7 +193,7 @@ known stale doc and two live (if probably harmless) warnings just means
 CI immediately has known-acceptable red items, which defeats the point of
 CI.
 
-### Phase 2 — CI and quality gates
+### Phase 2 — CI and quality gates ✅ Done
 - GitHub Actions matrix: Linux + macOS + Windows, at minimum two compilers
   (GCC and Clang), Debug and Release.
 - A real Android job: actually invoke the NDK toolchain file and build
@@ -206,6 +206,37 @@ CI.
   version of that warning.
 - `clang-tidy` (or `cppcheck`) as a non-blocking-at-first, then
   blocking-once-clean CI step.
+
+**Status**: all five pieces exist in `.github/workflows/ci.yml`, each
+confirmed actually running (not just written) via real pushes — 10-job
+build matrix (Linux GCC+Clang, macOS Clang, Windows MSVC+ClangCL, ×
+Debug/Release), `android-ndk-arm64-v8a`, `asan-ubsan`, and non-blocking
+`clang-tidy`, all green as of commit `cf8c92c`. Nothing here needed a
+GitHub-side setting (no secrets, no branch protection) — everything
+runs on the default `GITHUB_TOKEN` and public runners.
+
+Three real bugs found and fixed along the way, each because the *real*
+CI run (not the written YAML) surfaced them:
+- The initial global `-DCMAKE_CXX_FLAGS` approach to warnings-as-errors
+  held CPM-fetched dependencies (Catch2) to augur's own bar and silently
+  dropped MSVC's `/EHsc` default — rescoped to `target_compile_options()`
+  on augur's own targets only (`CMakeLists.txt`'s new
+  `augur_apply_strict_warnings()`), which fixed both at once.
+- `boost::pfr::get_name()` (the reflection layer's field-name extraction,
+  docs/ROADMAP.md item 12) fails its own internal self-consistency check
+  under ClangCL specifically — a real, five-day-old-at-release upstream
+  bug (boostorg/pfr#148) the pinned `2.2.0` tag predates. Fixed by
+  bumping the pin to `boost-1.85.0`.
+- `macos-clang-debug` intermittently took 20-25+ minutes (every other
+  job, including its own Release sibling, finished under 8) — root-caused
+  via a cancelled run's cleanup log showing dozens of simultaneously-live
+  orphaned `clang` processes, consistent with `--parallel`'s bare/
+  unbounded job count oversubscribing a runner whose reported core count
+  exceeds what it can actually sustain. Fixed by capping at `--parallel
+  3`; confirmed resolved on the very next run and has not recurred since.
+
+Independently reviewed by a subagent afterward (see below) before Phase 3
+began.
 
 ### Phase 3 — Testing depth
 - A throughput/latency micro-benchmark suite (Google Benchmark or similar)
