@@ -17,9 +17,62 @@ results are reported too, on purpose, matching this project's own
 established practice of reporting honest findings rather than only
 convenient ones (see `docs/ROADMAP.md`'s "Fixes found along the way").
 
-This is a **planning document**, not a change log — nothing below has been
-implemented yet. Ranking and sequencing is a judgment call for whoever
-prioritizes this next, not something the investigation itself can decide.
+This was originally a **planning document**, not a change log — at the time
+it was written, nothing below had been implemented yet, and ranking/
+sequencing was left as a judgment call for whoever prioritized it next.
+
+## Implementation status (update)
+
+Almost everything below has since been implemented, verified, and pushed,
+following this document's own "Suggested sequencing" section at the bottom
+in order. Each item's own section still reads as it did when only
+investigated, not yet fixed — that's deliberate, so the original finding
+stays intact as a historical record; this status section is the current
+truth.
+
+**Done** (top findings table, in order): #1 `safe_inverse()`'s two bugs
+(fixed relative-scale, not the originally-suggested absolute floor — an
+absolute 1e-9 floor turned out numerically inert in float32 for ordinary
+covariance magnitudes, found and corrected during implementation); #2/#3
+`filters::Filter`'s `MeasDim` bug and `plugin/registry.hpp`'s identical bug
+(fixed together, plus `set_state()` added to the concept); #4
+`reflect/serialize.hpp`'s Release-mode bounds check (made unconditional,
+not just documented); #5 `coordinated_turn.hpp`'s second jacobian bug (three
+more related bugs found via the same widened test, all fixed — see that
+commit for the full account); #6 track reacquisition (minimal fix, as
+scoped); #7 PDAF (`track::pdaf_update()`, new); #8 JPDA clustering (union-
+find, provably lossless as this document claimed); #9
+`OutOfSequenceEstimator` `Filter` conformance; #10 `imm/` padding heuristic
+(cheap override-parameter fix, as scoped — the deeper BLUE-based fix
+remains genuinely future work, per this document's own sequencing); #11
+CTAD comments (corrected, not just hedged further); #12 `FixedVector`
+(rewritten on raw storage + placement-new — notably, this document's
+own suggested `std::optional`-per-slot-shaped approach was tried first and
+found to make construction SLOWER, not faster, on this toolchain; see the
+commit for the measured before/after); #13 `std::function` overhead (EKF/
+UKF/ParticleFilter's measurement callback is now a defaulted template
+parameter); #14 RNG determinism (xoshiro256++ + Box-Muller vendored,
+`std::normal_distribution` replaced). The "Infrastructure / build" section's
+`FilterRegistry::names()`/`unregister()` and the git.cmd PATH-shadowing
+documentation are also done.
+
+**Deliberately not done**, with reasoning (both explicitly "no urgency, land
+whenever convenient" in this document's own sequencing, revisited and
+reaffirmed rather than silently dropped): the `out_of_sequence.hpp`/
+`latency_compensation.hpp` hand-duplicated shift-based ring buffer
+(promoting a real `RingBuffer<T,Capacity>` into `utils/` is still worth
+doing, but touches two already-solid, already-modified-this-round files for
+a benefit this document's own measurement called negligible at every
+`MaxHistory` value actually in use today); the two new motion models
+(linear-drag ballistic, quasi-3D coordinated turn) are pure additions, not
+fixes to anything existing, and were the lowest-priority tier in this
+document's own sequencing.
+
+Every implemented item has its own commit with a from-scratch verification
+methodology (ad hoc Python/numpy math checks before any C++, standalone
+ASan/UBSan probes for the higher-risk changes, and/or a direct before/after
+measurement for every performance claim) — see `git log` for the individual
+commits, each of which explains its own verification in detail.
 
 One correction made during synthesis, stated plainly: three of the nine
 agents independently hit CMake's "ambiguous argument 'HEAD0'" error during a
