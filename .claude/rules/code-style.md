@@ -83,13 +83,13 @@ against, not one flat namespace of unrelated names.
 Every non-trivial file is honest, in its own top comment, about its tier:
 
 - **Solid** (most of `core/`, `math/`, `models/{constant_velocity,
-  constant_acceleration,coordinated_turn}.hpp`, `filters/{kalman,
+  constant_acceleration,coordinated_turn,singer}.hpp`, `filters/{kalman,
   extended_kalman,unscented_kalman,particle_filter}.hpp`, all of `imm/`
   except the heterogeneous-mixing files below, `predict/{query,
   latency_compensation}.hpp`, `track/{association,track_manager,
   out_of_sequence,fusion}.hpp`, `reflect/`, `plugin/`, all of `utils/`): no
   special marker — comments explain rationale, not caveats.
-- **Flagged sketch** (`models/singer.hpp`, `models/current_statistical.hpp`
+- **Flagged sketch** (`models/current_statistical.hpp`
   + `filters/current_statistical_filter.hpp`, `imm/{augmented_layout,
   heterogeneous_mixing,heterogeneous_estimator}.hpp`,
   `filters/adaptive/sage_husa.hpp`, `track/gm_phd.hpp`): compiles and

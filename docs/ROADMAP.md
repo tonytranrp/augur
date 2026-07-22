@@ -123,7 +123,7 @@ than CV staying pinned near 0.9+ for the whole run. See
 
 ## Motion models & filtering
 
-### 1. Current Statistical (CS) model ✅ Done (flagged sketch, same tier as Singer)
+### 1. Current Statistical (CS) model ✅ Done (flagged sketch)
 **What**: an adaptive-mean refinement of the Singer model — acceleration mean
 adapts online instead of being fixed at zero, tracking targets that commit to
 a maneuver rather than just perturbing around straight-line motion.

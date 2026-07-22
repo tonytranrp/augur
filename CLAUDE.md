@@ -37,12 +37,12 @@ own top comment and `docs/ROADMAP.md` for specifics. Full tier breakdown:
   is.
 - `include/augur/math/` — the one choke point for linear algebra (Eigen
   aliases, `safe_inverse`/`project_to_psd`) and optional glm interop.
-- `include/augur/models/` — constant velocity/acceleration and coordinated
-  turn are solid; Singer and Current Statistical are flagged sketches
-  (Singer's process-noise term is a documented simplification, not its
-  exact closed-form integral; Current Statistical's adaptive-mean feedback
-  needed damping/clamping to avoid unbounded divergence, and still biases
-  toward its clamp under a very long sustained maneuver).
+- `include/augur/models/` — constant velocity/acceleration, coordinated
+  turn, and Singer are solid (Singer's process-noise term is the exact
+  Van Loan closed-form integral, not a placeholder); Current Statistical
+  is a flagged sketch (its adaptive-mean feedback needed damping/clamping
+  to avoid unbounded divergence, and still biases toward its clamp under
+  a very long sustained maneuver).
 - `include/augur/filters/` — linear, extended, unscented Kalman, and
   particle filters are solid; `filters/adaptive/sage_husa.hpp` is a flagged
   sketch (assumes a direct-position measurement model, stated in its own

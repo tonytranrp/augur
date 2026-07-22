@@ -17,7 +17,7 @@ anywhere load-bearing outside the namespace.
 
 - **Motion models** (`models/`): the deterministic + stochastic dynamics of a
   moving target — constant velocity, constant acceleration, coordinated turn,
-  and (as a flagged sketch) the Singer maneuvering-target model.
+  and the Singer maneuvering-target model.
 - **Filters** (`filters/`): the recursive estimation rule applied to a model —
   linear Kalman filter and Extended Kalman filter today; UKF, particle filter,
   and adaptive noise estimation are roadmap items.
@@ -236,7 +236,7 @@ unvalidated Kalman math is worse than not shipping it.
 **Solid — implemented and reasoned through carefully:**
 `core/` (including `state_component.hpp`), `math/` (both files),
 `models/constant_velocity.hpp`, `models/constant_acceleration.hpp`,
-`models/coordinated_turn.hpp`, `filters/kalman.hpp`,
+`models/coordinated_turn.hpp`, `models/singer.hpp`, `filters/kalman.hpp`,
 `filters/extended_kalman.hpp`, `filters/unscented_kalman.hpp`,
 `filters/particle_filter.hpp`, `imm/mode_matrix.hpp`, `imm/mixing.hpp`,
 `imm/estimator.hpp`, `predict/query.hpp`, `predict/latency_compensation.hpp`,
@@ -248,9 +248,7 @@ unvalidated Kalman math is worse than not shipping it.
 `tests/unit/` (see `docs/ROADMAP.md` item 13 for what that now includes).
 
 **Flagged sketch — compiles and satisfies its concept, needs verification
-before trusting it:** `models/singer.hpp` (transition matrix is the standard
-closed form; the process-noise term is a simplified placeholder, not Singer's
-exact closed-form integral — the file says so directly); `models/current_statistical.hpp`
+before trusting it:** `models/current_statistical.hpp`
 + `filters/current_statistical_filter.hpp` (docs/ROADMAP.md item 1 — the core
 dynamics are verified, but the adaptive-mean feedback needed damping and
 clamping to avoid an unbounded divergence found during testing, and still
