@@ -61,6 +61,33 @@ TEST_CASE("ParticleFilter tracks a linear system within a reasonable Monte Carlo
     REQUIRE_THAT((kf.state() - pf.state()).norm(), WithinAbs(0.0f, 0.3f));
 }
 
+TEST_CASE("ParticleFilter resets to uniform weights when the measurement covariance is degenerate",
+          "[filters][particle][regression]") {
+    // Regression coverage for the hoisted-out-of-the-loop determinant/
+    // inverse in update() (see that function's own comment): a singular
+    // R (det<=0) must make EVERY particle's likelihood exactly 0 --
+    // regardless of whether that determinant check runs once (now) or
+    // once per particle (before) -- so total stays 0 and every weight
+    // resets to 1/NumParticles, not silently NaN/Inf from dividing by a
+    // zero determinant's normalizer.
+    using CV = augur::models::ConstantVelocity<float, 2>;
+    using PF = augur::filters::ParticleFilter<CV, 2, 200>;
+
+    PF::StateVector x0 = PF::StateVector::Zero();
+    PF::StateCovariance P0 = PF::StateCovariance::Identity();
+    PF filter{CV{0.05f}, x0, P0,
+              [](const PF::StateVector& x) -> PF::Measurement { return PF::Measurement{x(0), x(1)}; },
+              PF::MeasurementCovariance::Zero(), /*seed=*/7};
+
+    filter.predict(1.0f / 30.0f);
+    filter.update(PF::Measurement{1.0f, 1.0f});
+
+    REQUIRE_THAT(filter.last_likelihood(), WithinAbs(0.0f, 1e-9f));
+    REQUIRE(std::isfinite(filter.state()(0)));
+    REQUIRE(std::isfinite(filter.state()(1)));
+    REQUIRE(filter.covariance()(0, 0) >= 0.0f);
+}
+
 TEST_CASE("ParticleFilter weights stay valid and the state stays finite across many predict/update/resample cycles",
           "[filters][particle]") {
     using CV = augur::models::ConstantVelocity<float, 2>;

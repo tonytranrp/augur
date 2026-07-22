@@ -108,10 +108,26 @@ public:
     }
 
     void update(const Measurement& z) {
+        // R_ is the filter's own measurement-noise covariance -- the same
+        // for every particle in this loop, not a per-particle quantity.
+        // Hoisting its inverse/determinant/normalizer out here avoids
+        // recomputing an identical LDLT decomposition (safe_inverse) and
+        // determinant NumParticles times per update() call; the loop body
+        // now does only the per-particle-varying quadratic form. Pure
+        // loop-invariant-code-motion -- R_ is never mutated inside this
+        // loop, so results are bit-for-bit identical to calling
+        // gaussian_likelihood(innovation, R_) fresh per particle.
+        const auto R_inv = augur::math::safe_inverse<Scalar, MeasDim>(R_);
+        const Scalar det = R_.determinant();
+        const bool det_valid = det > Scalar(0);
+        const Scalar normalizer = det_valid
+            ? std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, Scalar(MeasDim)) * det)
+            : Scalar(1); // unused below when !det_valid (every particle gets likelihood 0, matching the old per-call check)
+
         Scalar total = Scalar(0);
         for (auto& p : particles_) {
             const Measurement innovation = z - h_(p.state);
-            p.weight *= gaussian_likelihood(innovation, R_);
+            p.weight *= det_valid ? gaussian_likelihood(innovation, R_inv, normalizer) : Scalar(0);
             total += p.weight;
         }
 
@@ -171,12 +187,12 @@ private:
         return llt.matrixL();
     }
 
-    [[nodiscard]] Scalar gaussian_likelihood(const Measurement& innovation, const MeasurementCovariance& cov) const {
-        const auto cov_inv = augur::math::safe_inverse<Scalar, MeasDim>(cov);
+    // cov_inv/normalizer are precomputed once per update() call by the
+    // caller (see its own comment) rather than taking the raw covariance
+    // and redoing that work per particle.
+    [[nodiscard]] static Scalar gaussian_likelihood(const Measurement& innovation,
+                                                     const MeasurementCovariance& cov_inv, Scalar normalizer) {
         const Scalar exponent = Scalar(-0.5) * (innovation.transpose() * cov_inv * innovation)(0, 0);
-        const Scalar det = cov.determinant();
-        if (!(det > Scalar(0))) return Scalar(0);
-        const Scalar normalizer = std::sqrt(std::pow(Scalar(2) * std::numbers::pi_v<Scalar>, Scalar(MeasDim)) * det);
         return std::exp(exponent) / normalizer;
     }
 
