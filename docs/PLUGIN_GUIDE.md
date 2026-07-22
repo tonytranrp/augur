@@ -107,8 +107,18 @@ custom smoother, or a domain-specific closed-form update), implement
 `augur::filters::Filter` directly (`include/augur/filters/filter_concept.hpp`)
 instead of going through `models::MotionModel` + `KalmanFilter` at all — the
 required surface is `predict(dt)`, `update(z)`, `state()`, `covariance()`,
-and `last_likelihood()` (the last one is what IMM mode-mixing uses to reweight
-your filter against the others in the pack). Same rule applies: satisfy the
+`set_state(x, P)`, and `last_likelihood()`. `set_state()` is easy to miss if
+you're only looking at what your own code calls: `imm::Estimator`,
+`imm::HeterogeneousEstimator`, and `track::OutOfSequenceEstimator` all call
+it unconditionally, on every filter they wrap, every cycle — it's how IMM
+mixing overwrites each model's state/covariance with a blended estimate
+between predictions, and how out-of-sequence handling rolls a filter back to
+a past snapshot. `last_likelihood()` is what IMM mode-mixing uses to reweight
+your filter against the others in the pack. You'll also need a `Measurement`
+type alias naming what `update()` actually accepts — every built-in filter
+defines one (`using Measurement = augur::math::Vector<Scalar, MeasDim>;`),
+and `filters::Filter` checks `update()` against it directly rather than
+guessing a size from your state dimension. Same rule applies: satisfy the
 concept, and `imm::Estimator` accepts it.
 
 ## When you need runtime selection instead

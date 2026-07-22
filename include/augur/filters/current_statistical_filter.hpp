@@ -35,6 +35,7 @@ class CurrentStatisticalFilter {
 public:
     using Scalar = typename Inner::Scalar;
     using Model = typename Inner::Model;
+    using Measurement = typename Inner::Measurement;
     static constexpr std::size_t dimension = Inner::dimension;
 
     explicit CurrentStatisticalFilter(Inner inner,
@@ -44,7 +45,6 @@ public:
 
     void predict(Scalar dt) { inner_.predict(dt); }
 
-    template <typename Measurement>
     void update(const Measurement& z) {
         inner_.update(z);
 
