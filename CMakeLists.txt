@@ -51,10 +51,24 @@ endif()
 # Optional: Boost.PFR for the portable reflection backend
 # (reflect/backends/pfr_backend.hpp). Header-only, no Boost dependency
 # despite the name -- see the comment in that header for details.
+#
+# Pinned to a post-2.2.0 tag deliberately: the standalone 2.2.0 release
+# (2023-11-23) predates boostorg/pfr#148 by five days, a real bug where
+# clang-cl (which defines both __clang__ and _MSC_VER) gets misrouted
+# into config.hpp's MSVC-pattern branch for BOOST_PFR_CORE_NAME_PARSING
+# even though it actually captures a __PRETTY_FUNCTION__-shaped string
+# (Clang never exposes __FUNCSIG__ to #if defined(), even under
+# -fms-extensions -- see llvm/llvm-project#30933) -- boost::pfr::get_name()
+# then fails its own internal self-consistency static_assert outright.
+# Confirmed via GitHub Actions (windows-latest, `cmake -T ClangCL`):
+# fails at 2.2.0, fixed by this tag. PFR stopped cutting standalone
+# version tags after 2.2.0 and now only ships bundled with Boost's own
+# boost-1.XX.0 releases, all of which contain the one-line fix
+# (`defined(_MSC_VER) && !defined(__clang__)`).
 CPMAddPackage(
   NAME boost_pfr
   GITHUB_REPOSITORY boostorg/pfr
-  GIT_TAG 2.2.0
+  GIT_TAG boost-1.85.0
   DOWNLOAD_ONLY YES
 )
 if(boost_pfr_ADDED)
