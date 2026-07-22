@@ -81,9 +81,16 @@ int main() {
                 server_history.size(), written, Buffer::kMaxSerializedBytes);
 
     // Simulates a fresh process/machine that only has the byte array --
-    // a default-constructed buffer, never touched by record().
+    // a default-constructed buffer, never touched by record(). deserialize()
+    // returns false on a truncated/malformed source (checked unconditionally,
+    // even in this Release build -- see reflect/serialize.hpp's file
+    // comment) rather than silently misparsing; a real save/network
+    // loader should check this the same way.
     Buffer restored_history;
-    restored_history.deserialize(std::span<const std::byte>(wire.data(), written));
+    if (!restored_history.deserialize(std::span<const std::byte>(wire.data(), written))) {
+        std::fprintf(stderr, "SnapshotBuffer::deserialize failed: source was truncated or malformed\n");
+        return 1;
+    }
 
     const Scalar query_time = t - Scalar(0.1);
     const auto original_state = server_history.rewind_to(query_time);

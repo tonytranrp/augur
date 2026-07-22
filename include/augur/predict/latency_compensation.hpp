@@ -125,16 +125,29 @@ public:
     // Requires the same Scalar/State/MaxHistory as the writer -- there's
     // no type tag or schema on the wire to check that for you (see
     // reflect/serialize.hpp's file comment on why not).
-    void deserialize(std::span<const std::byte> source) {
+    //
+    // Returns false -- and leaves *this completely UNCHANGED -- if
+    // `source` is truncated, too short for its own encoded count, or
+    // otherwise malformed. This is a real trust boundary (a save file, a
+    // network packet), checked unconditionally rather than via
+    // AUGUR_ASSERT, unlike most of this codebase's asserts (see
+    // reflect/serialize.hpp's file comment for the full reasoning).
+    // Deserializes into a local staging buffer first and only commits it
+    // to history_ on success, so a truncated source can't leave this
+    // object half-overwritten with a mix of old and new/default data.
+    [[nodiscard]] bool deserialize(std::span<const std::byte> source) {
         reflect::ByteReader reader(source);
         const auto count = reader.template read<std::uint32_t>();
-        AUGUR_ASSERT(count <= MaxHistory, "SnapshotBuffer::deserialize: snapshot count exceeds MaxHistory");
-        history_.clear();
+        if (reader.failed() || count > MaxHistory) return false;
+
+        augur::utils::FixedVector<Snapshot, MaxHistory> staged;
         for (std::uint32_t i = 0; i < count; ++i) {
             Snapshot snapshot{};
-            reflect::deserialize(snapshot, reader);
-            history_.push_back(snapshot);
+            if (!reflect::deserialize(snapshot, reader)) return false;
+            staged.push_back(snapshot);
         }
+        history_ = std::move(staged);
+        return true;
     }
 
 private:
