@@ -90,10 +90,36 @@ once one model's mode probability comes to dominate, that padding
 effectively resets the *other* models' confidence about their own unique
 states every mixing cycle, so a lower-probability model's sub-estimate for
 a state the others don't share can be noisy rather than smoothly
-convergent — while the combined position/velocity estimate stays accurate
-throughout. `examples/04_heterogeneous_imm` demonstrates the full
+convergent. `examples/04_heterogeneous_imm` demonstrates the full
 CV+CA+CT mix the roadmap item names, with that characteristic called out
 directly in its own comment rather than glossed over.
+
+**Update (docs/PRODUCTION_ROADMAP.md P0 item 5)**: a follow-up investigation
+into "mode probabilities lean CV-heavy even during a visible turn" found two
+things, one confirming existing behavior as correct and one real bug. First,
+verified numerically that at this example's own (dt, turn-rate, measurement-
+noise) combination, a single tick's curvature-induced deviation between a
+straight-line and the true arc (~0.0033) is about 6x *smaller* than the
+measurement noise sigma (~0.02) — IMM's mode-probability update is
+inherently a per-step likelihood comparison, so it genuinely cannot
+statistically distinguish CV from CT quickly in that regime; CV staying
+dominant for several steps after a turn starts is correct, not a bug.
+Second, extending the demo scenario long enough to actually reach a mode-
+probability crossover (not covered by the original 20-step window) surfaced
+that `big_unknown_variance()`'s original value (1e4) was large enough to
+nearly erase a recovering model's own prior in a single mixing cycle right
+at the crossover — mode probabilities snapping close to 1.0/0.0 and the
+*combined* position estimate briefly going wrong-signed, which the previous
+paragraph's now-corrected "stays accurate throughout" claim missed (true
+only within the originally-tested 20-step window, not in general).
+Empirically swept, `big_unknown_variance` 100 (down from 1e4) sits
+mid-plateau (max combined-position error ~0.009 vs ~0.43 at 1e4 in the
+extended scenario) and, as a bonus, makes the *original* 20-step example
+markedly more compelling on its own: mode probabilities now shift smoothly
+and CT's probability visibly crosses 0.5 partway through the turn, rather
+than CV staying pinned near 0.9+ for the whole run. See
+`imm/heterogeneous_mixing.hpp`'s file comment for the full sweep data and
+`examples/04_heterogeneous_imm`'s comment for the demo-level summary.
 
 ## Motion models & filtering
 

@@ -10,16 +10,23 @@
 // per .claude/rules/testing.md) -- exactly the check that rule asks for
 // before trusting this kind of change. The last case is an
 // integration-level robustness check, not a "clean mode-probability
-// swing" demo: an earlier ad hoc python3 exploration of a CV+CoordinatedTurn
-// mix during a real sustained turn found that once CV's mode probability
-// dominates, the big-unknown-variance padding (imm/heterogeneous_mixing.hpp)
-// effectively resets CoordinatedTurn's turn-rate confidence every mixing
-// cycle, producing a noisy (not smoothly-converging) omega estimate --
-// while the COMBINED position estimate stays accurate regardless. That's
-// an honest, documented characteristic of the padding heuristic (see
-// imm/heterogeneous_mixing.hpp's file comment), not a bug, so this test
-// checks what's actually reliable: valid probabilities and bounded
-// position error.
+// swing" demo: an ad hoc python3/C++ exploration of a CV+CoordinatedTurn
+// mix during a real sustained turn (docs/PRODUCTION_ROADMAP.md P0 item 5)
+// found that once CV's mode probability dominates, the big-unknown-
+// variance padding (imm/heterogeneous_mixing.hpp) effectively resets
+// CoordinatedTurn's turn-rate confidence every mixing cycle, producing a
+// noisy (not smoothly-converging) omega estimate. That exploration
+// initially also found the COMBINED position estimate going badly wrong
+// (even wrong-signed) for several steps right around a mode-probability
+// crossover -- traced to the padding constant itself (1e4) being large
+// enough to nearly erase a recovering model's own prior in one mixing
+// cycle; see imm/heterogeneous_mixing.hpp's file comment for the swept
+// fix (100). With that fix, the 20-step window this test actually
+// exercises never reaches a crossover, so what it checks -- valid
+// probabilities and bounded position error -- holds throughout; a longer
+// run that does cross over is exactly what caught the original issue,
+// which is why this comment states the finding rather than only the
+// clean result.
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -72,7 +79,7 @@ TEST_CASE("expand_state/expand_covariance/restrict round-trip through imm::mix m
 
     REQUIRE_THAT(ct_state(0), WithinAbs(0.08947368f, kTol));
     REQUIRE_THAT(ct_state(4), WithinAbs(0.04473684f, kTol)); // mixed omega: pulled toward 0 by CV's "no opinion" padding
-    REQUIRE_THAT(ct_cov(4, 4), WithinAbs(1053.97391967f, 1.0f)); // stays large: CT shouldn't be overconfident about omega here
+    REQUIRE_THAT(ct_cov(4, 4), WithinAbs(11.8686565f, 0.01f)); // stays large (vs CT's own 1.5 prior): CT shouldn't be overconfident about omega here
 }
 
 TEST_CASE("HeterogeneousEstimator<ConstantVelocity, CoordinatedTurn> stays numerically sane over a real turn",
@@ -132,9 +139,9 @@ TEST_CASE("HeterogeneousEstimator<ConstantVelocity, CoordinatedTurn> stays numer
         REQUIRE(mode_p[1] >= 0.0f);
     }
 
-    // Verified (ad hoc python3 reference) max position error over this
-    // exact scenario is ~0.014; this bound has generous margin while
-    // still catching a real divergence (e.g. a sign error in expand/
-    // restrict would blow this up far past 0.1).
+    // Verified max position error over this exact scenario is ~0.0096
+    // (down from ~0.014 before the big_unknown_variance fix above); this
+    // bound has generous margin while still catching a real divergence
+    // (e.g. a sign error in expand/restrict would blow this up far past 0.1).
     REQUIRE(max_pos_error < 0.1f);
 }

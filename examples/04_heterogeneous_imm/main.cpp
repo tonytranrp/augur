@@ -11,20 +11,30 @@
 // (core/state_component.hpp) and restricting back down before each
 // filter's own predict().
 //
-// Honest note on what this demo shows and doesn't: an ad hoc python3
-// exploration (per .claude/rules/testing.md) of this same scenario found
-// that once one model's mode probability comes to dominate, the
-// "large-but-finite unknown variance" padding used for components other
-// models don't track (imm/heterogeneous_mixing.hpp) effectively resets
-// the OTHER models' confidence about their own unique states (e.g.
-// CoordinatedTurn's turn rate) every mixing cycle -- so per-model
-// sub-estimates for those unique states can be noisy rather than
-// smoothly convergent. What stays reliable, and what this example
-// actually demonstrates, is the COMBINED position/velocity estimate:
-// it tracks the true trajectory well throughout, and mode probabilities
-// remain valid, finite, and sum to 1 regardless of which model
-// currently dominates. See tests/unit/test_heterogeneous_imm.cpp for
-// the same finding turned into a permanent regression check.
+// Watch the "modes[...]" column as this runs: uniform for the first few
+// straight-line steps, then CT's probability climbs steadily (crossing
+// 0.5 partway through) as the sustained turn's evidence accumulates,
+// while CV's declines correspondingly -- IMM correctly recognizing the
+// true motion mode as it becomes evident, not switching abruptly. The
+// combined position estimate tracks the true trajectory tightly
+// throughout regardless of which model currently dominates.
+//
+// Tuning history, stated honestly rather than left implicit: an earlier
+// version of imm/heterogeneous_mixing.hpp's big_unknown_variance() padding
+// constant (1e4, since fixed to 100 -- see that file's comment,
+// docs/PRODUCTION_ROADMAP.md P0 item 5) was large enough that mixing a
+// dominant model's padded "no information" belief into a non-dominant
+// model could nearly erase that model's own prior in a single cycle --
+// this example's own mode probabilities used to snap almost to 1.0/0.0
+// mid-turn and the combined estimate briefly went wrong-signed right
+// around the crossover. The current constant keeps that from happening
+// at the cost of a real, smaller, still-present characteristic: a
+// non-dominant model's own sub-estimate for a state the others don't
+// share (e.g. CoordinatedTurn's turn rate while CV still dominates) gets
+// partly reset toward the dominant model's belief every mixing cycle, so
+// it can be noisier than a standalone filter's would be. See
+// tests/unit/test_heterogeneous_imm.cpp for both findings turned into
+// permanent regression checks.
 
 #include <cstdio>
 #include "augur/augur.hpp"

@@ -15,7 +15,7 @@
 // opinion at all about a component it doesn't track (e.g.
 // ConstantVelocity has no turn-rate state). Rather than treating that
 // as "definitely zero" (overconfident and wrong), expand_covariance()
-// below fills it in as "zero mean, kBigUnknownVariance variance" -- a
+// below fills it in as "zero mean, big_unknown_variance() variance" -- a
 // large but finite placeholder standing for "no information," not a
 // claim about the true value. Bar-Shalom, Li & Kirubarajan (ch. 11.6)
 // give the general mapping-matrix framework without mandating one
@@ -23,12 +23,33 @@
 // here. Practically: a model's mixed-in prior for a component it
 // doesn't itself track gets quickly overridden by its own next
 // update() against a real measurement rather than staying stuck at a
-// wrong value, because the huge prior variance makes the Kalman gain
+// wrong value, because the large prior variance makes the Kalman gain
 // trust the new measurement almost completely. Verified numerically
 // (ad hoc python3, per .claude/rules/testing.md) against a
 // hand-computable 2-model example before being ported here -- see
 // tests/unit/test_heterogeneous_imm.cpp for the permanent record of
 // that check.
+//
+// MAGNITUDE (docs/PRODUCTION_ROADMAP.md P0 item 5): originally 1e4.
+// That was too large -- when a dominant model's expanded state mixes
+// INTO a non-dominant model (weighted by mix_weight = transition(i,j) *
+// mode_probability[i] / c_j), the padding contributes mix_weight * 1e4
+// to the receiving model's mixed covariance, which for any non-trivial
+// mix_weight overwhelms that model's own prior so completely that its
+// very next update() effectively discards all memory of its own state
+// (Kalman gain saturates when prior covariance vastly exceeds
+// measurement-implied information) -- worst right at a mode-probability
+// crossover, exactly where mix_weight is largest for the recovering
+// model. Empirically swept (ad hoc python3/C++, per
+// .claude/rules/testing.md) against examples/04_heterogeneous_imm's own
+// CV+CA+CT sustained-turn scenario extended long enough to observe a
+// real crossover: max combined-position error over the run was ~0.43
+// at 1e4 (visibly wrong-signed at points) vs. a stable ~0.009-0.013
+// plateau for every value from 50 to 1000, degrading again above ~5000.
+// 100 sits in the middle of that plateau -- still ~65x a typical
+// well-tuned filter covariance in this library (order 1-2), comfortably
+// "large" without being so extreme it erases a model's own information
+// in one mixing cycle.
 
 #include <array>
 #include <cstddef>
@@ -52,8 +73,10 @@ template <typename Scalar>
 [[nodiscard]] constexpr Scalar big_unknown_variance() {
     // See file comment: large enough that any real measurement quickly
     // dominates it, far larger than any covariance a well-tuned filter
-    // in this library would produce on its own.
-    return static_cast<Scalar>(1e4);
+    // in this library would produce on its own -- but not so large that
+    // mixing it into a non-dominant model erases that model's own prior
+    // in a single cycle (empirically swept; 100 sits mid-plateau).
+    return static_cast<Scalar>(100);
 }
 
 template <AugmentedMappable Model>
