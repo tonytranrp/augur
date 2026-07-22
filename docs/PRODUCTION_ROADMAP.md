@@ -227,13 +227,18 @@ CI run (not the written YAML) surfaced them:
   under ClangCL specifically — a real, five-day-old-at-release upstream
   bug (boostorg/pfr#148) the pinned `2.2.0` tag predates. Fixed by
   bumping the pin to `boost-1.85.0`.
-- `macos-clang-debug` intermittently took 20-25+ minutes (every other
-  job, including its own Release sibling, finished under 8) — root-caused
-  via a cancelled run's cleanup log showing dozens of simultaneously-live
-  orphaned `clang` processes, consistent with `--parallel`'s bare/
-  unbounded job count oversubscribing a runner whose reported core count
-  exceeds what it can actually sustain. Fixed by capping at `--parallel
-  3`; confirmed resolved on the very next run and has not recurred since.
+- `macos-clang-debug` intermittently took 20-25+ minutes, twice
+  (its own Release sibling ranged 7.4-19.5 minutes across those two
+  incidents — the wide range means the second one was likely broader
+  runner contention that time, not purely this job oversubscribing
+  itself) — root-caused via a cancelled run's cleanup log showing dozens
+  of simultaneously-live orphaned `clang` processes, consistent with
+  `--parallel`'s bare/unbounded job count oversubscribing a runner whose
+  reported core count exceeds what it can actually sustain. Fixed by
+  capping at `--parallel 3`; confirmed resolved on the very next run and
+  has not recurred since (an independent subagent review afterward
+  confirmed this precise timing correction and verified the fix's
+  effectiveness directly against the raw CI run history).
 
 Independently reviewed by a subagent afterward (see below) before Phase 3
 began.
