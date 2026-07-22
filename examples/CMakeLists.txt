@@ -62,3 +62,7 @@ augur_apply_strict_warnings(sensor_fusion)
 add_executable(reflection_serialization 15_reflection_serialization/main.cpp)
 target_link_libraries(reflection_serialization PRIVATE augur::augur)
 augur_apply_strict_warnings(reflection_serialization)
+
+add_executable(linear_drag_ballistic 16_linear_drag_ballistic/main.cpp)
+target_link_libraries(linear_drag_ballistic PRIVATE augur::augur)
+augur_apply_strict_warnings(linear_drag_ballistic)
