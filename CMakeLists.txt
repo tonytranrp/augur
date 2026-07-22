@@ -19,6 +19,7 @@ option(AUGUR_WITH_GLM             "Enable the glm interop layer (math/interop_gl
 option(AUGUR_BUILD_EXAMPLES       "Build the example programs under examples/"            ON)
 option(AUGUR_BUILD_TESTS          "Build unit tests under tests/"                         OFF)
 option(AUGUR_WARNINGS_AS_ERRORS   "Build augur's own examples/tests with -Werror/-WX"     OFF)
+option(AUGUR_BUILD_BENCHMARKS     "Build throughput/latency benchmarks under benchmarks/" OFF)
 
 include(cmake/get_cpm.cmake)
 
@@ -85,6 +86,43 @@ endif()
 
 if(AUGUR_BUILD_TESTS)
   CPMAddPackage("gh:catchorg/Catch2@3.7.1")
+endif()
+
+# Google Benchmark, same not-header-only shape as Catch2 above (a real
+# compiled library, so no DOWNLOAD_ONLY/hand-rolled INTERFACE target --
+# its own CMakeLists.txt runs, same as Catch2's). OPTIONS turns off the
+# pieces of ITS OWN build augur doesn't want dragged in: its own test
+# suite (would otherwise fetch GoogleTest as a second, unrelated
+# dependency), its own install() rules, and treating ITS warnings as
+# errors (a third-party concern, not augur's -- see
+# augur_apply_strict_warnings's own comment for why that distinction
+# matters generally in this project).
+if(AUGUR_BUILD_BENCHMARKS)
+  CPMAddPackage(
+    NAME benchmark
+    GITHUB_REPOSITORY google/benchmark
+    VERSION 1.9.1
+    OPTIONS
+      "BENCHMARK_ENABLE_TESTING OFF"
+      "BENCHMARK_ENABLE_INSTALL OFF"
+      "BENCHMARK_ENABLE_WERROR OFF"
+  )
+  # BENCHMARK_ENABLE_WERROR=OFF above doesn't cover this: Google
+  # Benchmark's own CMakeLists.txt unconditionally adds -pedantic-errors
+  # (not gated behind that option at all), which -- on this same class of
+  # newer Clang already worked around for Catch2 above -- turns its
+  # __COUNTER__ usage into a hard pedantic error building benchmark.cc
+  # itself, before augur's own code is even involved. Same narrow
+  # exemption, appended (not prepended) so it overrides the earlier
+  # -pedantic-errors for this one diagnostic specifically, applied only
+  # to Google Benchmark's own targets.
+  if(benchmark_ADDED AND NOT MSVC)
+    foreach(_augur_bench_target benchmark benchmark_main)
+      if(TARGET ${_augur_bench_target})
+        target_compile_options(${_augur_bench_target} PRIVATE -Wno-unknown-warning-option -Wno-c2y-extensions)
+      endif()
+    endforeach()
+  endif()
 endif()
 
 # Optional: Boost.PFR for the portable reflection backend
@@ -184,4 +222,8 @@ endif()
 if(AUGUR_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+if(AUGUR_BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
 endif()
