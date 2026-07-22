@@ -50,6 +50,27 @@
 // well-tuned filter covariance in this library (order 1-2), comfortably
 // "large" without being so extreme it erases a model's own information
 // in one mixing cycle.
+//
+// UNIT-SCALE DEPENDENCE (docs/IMPROVEMENT_PLAN.md, found in a later
+// investigation): 100 is an ABSOLUTE constant, but a covariance's own
+// scale depends on the caller's chosen units (position in meters vs.
+// millimeters changes variance by 1e6). A full 90-step dynamic
+// simulation using real position/velocity/acceleration rescaled 1000x
+// smaller (meters -> mm) showed combined-position error 3.6x worse
+// (0.046 vs. 0.013) and post-onset variance ~56,000x too small relative
+// to a healthy baseline, purely from the units choice -- this constant
+// untouched. expand_covariance() below takes an optional
+// padding_variance parameter (defaulting to this function, so every
+// EXISTING caller's behavior is unchanged) specifically so a caller
+// whose units make 100 the wrong absolute scale can override it --
+// HeterogeneousEstimator threads this through as its own optional,
+// defaulted constructor parameter. This is the CHEAP partial fix the
+// plan scoped; the deeper fix (a real per-unit-system-aware or
+// BLUE-based padding scheme, see Granström, Willett & Bar-Shalom,
+// "Systematic approach to IMM mixing for unequal dimension states,"
+// IEEE Trans. Aerospace and Electronic Systems, 51(5), 2015, pp.
+// 2975-2986) is a substantial, separate research effort the plan
+// deliberately did not fold into this change.
 
 #include <array>
 #include <cstddef>
@@ -90,9 +111,11 @@ template <AugmentedMappable Model>
 }
 
 template <AugmentedMappable Model>
-[[nodiscard]] AugmentedMatrix<typename Model::Scalar> expand_covariance(const typename Model::Transition& P) {
+[[nodiscard]] AugmentedMatrix<typename Model::Scalar> expand_covariance(
+    const typename Model::Transition& P,
+    typename Model::Scalar padding_variance = big_unknown_variance<typename Model::Scalar>()) {
     using Scalar = typename Model::Scalar;
-    AugmentedMatrix<Scalar> out = AugmentedMatrix<Scalar>::Identity() * big_unknown_variance<Scalar>();
+    AugmentedMatrix<Scalar> out = AugmentedMatrix<Scalar>::Identity() * padding_variance;
     constexpr auto map = augmented_index_map<Model>();
     for (std::size_t i = 0; i < Model::dimension; ++i) {
         for (std::size_t j = 0; j < Model::dimension; ++j) {

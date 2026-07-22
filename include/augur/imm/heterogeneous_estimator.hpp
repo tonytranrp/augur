@@ -56,8 +56,16 @@ public:
     static_assert((std::is_same_v<typename Filters::Scalar, Scalar> && ...),
                   "all mixed filters must share a Scalar type");
 
-    HeterogeneousEstimator(Filters... filters, ModeMatrix<model_count, Scalar> transition)
-        : filters_(std::move(filters)...), transition_(std::move(transition)) {
+    // padding_variance overrides big_unknown_variance() (imm/
+    // heterogeneous_mixing.hpp) for every expand_covariance() call this
+    // estimator makes -- see that function's own file comment for why
+    // the default (100) is a fixed absolute constant that can be the
+    // wrong scale for a caller whose state is expressed in different
+    // units. Defaulted for source compatibility: every existing caller
+    // gets identical behavior to before this parameter existed.
+    HeterogeneousEstimator(Filters... filters, ModeMatrix<model_count, Scalar> transition,
+                            Scalar padding_variance = big_unknown_variance<Scalar>())
+        : filters_(std::move(filters)...), transition_(std::move(transition)), padding_variance_(padding_variance) {
         mode_probability_.fill(Scalar(1) / Scalar(model_count));
     }
 
@@ -95,7 +103,8 @@ private:
 
     template <std::size_t... Is>
     [[nodiscard]] std::array<AugmentedMatrix<Scalar>, model_count> gather_augmented_covariance(std::index_sequence<Is...>) const {
-        return {expand_covariance<typename std::tuple_element_t<Is, FilterTuple>::Model>(std::get<Is>(filters_).covariance())...};
+        return {expand_covariance<typename std::tuple_element_t<Is, FilterTuple>::Model>(
+            std::get<Is>(filters_).covariance(), padding_variance_)...};
     }
 
     template <std::size_t... Is>
@@ -115,6 +124,7 @@ private:
     FilterTuple filters_;
     ModeMatrix<model_count, Scalar> transition_;
     std::array<Scalar, model_count> mode_probability_;
+    Scalar padding_variance_;
 };
 
 // Best-effort CTAD -- see the identical caveat on imm::Estimator's own

@@ -145,3 +145,77 @@ TEST_CASE("HeterogeneousEstimator<ConstantVelocity, CoordinatedTurn> stays numer
     // (e.g. a sign error in expand/restrict would blow this up far past 0.1).
     REQUIRE(max_pos_error < 0.1f);
 }
+
+TEST_CASE("expand_covariance's padding_variance parameter overrides big_unknown_variance() when given", "[imm][heterogeneous]") {
+    // docs/IMPROVEMENT_PLAN.md's unit-scale-dependence finding: the
+    // default (100) is a fixed absolute constant that can be the wrong
+    // scale for a caller's own units. Verifies the override parameter
+    // itself actually changes the padded diagonal, and that omitting it
+    // still gives exactly the documented default -- both directions of
+    // the "defaulted for source compatibility" claim in
+    // heterogeneous_mixing.hpp's own comment.
+    using CV = augur::models::ConstantVelocity<float, 2>;
+    CV::Transition P = CV::Transition::Identity() * 2.0f;
+
+    const auto default_padded = augur::imm::expand_covariance<CV>(P);
+    const auto custom_padded = augur::imm::expand_covariance<CV>(P, 0.005f);
+
+    // A component CV doesn't track (e.g. turn rate) is untouched real
+    // state, so its diagonal entry is exactly the padding value.
+    const auto omega_idx = static_cast<int>(augur::core::augmented_index_of(augur::core::StateComponent::TurnRate));
+    REQUIRE_THAT(default_padded(omega_idx, omega_idx), WithinAbs(100.0f, 1e-3f)); // matches big_unknown_variance()'s documented default
+    REQUIRE_THAT(custom_padded(omega_idx, omega_idx), WithinAbs(0.005f, 1e-6f));
+
+    // CV's own tracked components are unaffected either way -- the
+    // override only changes the padding, never real state.
+    const auto vx_idx = static_cast<int>(augur::core::augmented_index_of(augur::core::StateComponent::VelocityX));
+    REQUIRE_THAT(default_padded(vx_idx, vx_idx), WithinAbs(2.0f, 1e-5f));
+    REQUIRE_THAT(custom_padded(vx_idx, vx_idx), WithinAbs(2.0f, 1e-5f));
+}
+
+TEST_CASE("HeterogeneousEstimator threads its padding_variance constructor parameter through to mixing",
+          "[imm][heterogeneous]") {
+    using CV = augur::models::ConstantVelocity<float, 2>;
+    using CT = augur::models::CoordinatedTurn<float>;
+    using KFCV = augur::filters::KalmanFilter<CV, /*MeasDim=*/2>;
+    using KFCT = augur::filters::KalmanFilter<CT, /*MeasDim=*/2>;
+
+    auto make_tracker = [](float padding_variance) {
+        KFCV::StateVector x0_cv = KFCV::StateVector::Zero();
+        x0_cv(2) = 1.5f;
+        KFCV::MeasurementMatrix H_cv = KFCV::MeasurementMatrix::Zero();
+        H_cv(0, 0) = 1;
+        H_cv(1, 1) = 1;
+        KFCV::MeasurementCovariance R = KFCV::MeasurementCovariance::Identity() * 0.0004f;
+        KFCV kf_cv{CV{0.05f}, x0_cv, KFCV::StateCovariance::Identity() * 2.0f, H_cv, R};
+
+        KFCT::StateVector x0_ct = KFCT::StateVector::Zero();
+        x0_ct(2) = 1.5f;
+        KFCT::MeasurementMatrix H_ct = KFCT::MeasurementMatrix::Zero();
+        H_ct(0, 0) = 1;
+        H_ct(1, 1) = 1;
+        KFCT kf_ct{CT{0.05f, 2.0f}, x0_ct, KFCT::StateCovariance::Identity() * 2.0f, H_ct, R};
+
+        return augur::imm::HeterogeneousEstimator<KFCV, KFCT>{
+            std::move(kf_cv), std::move(kf_ct),
+            augur::imm::ModeMatrix<2, float>::uniform(0.9f),
+            padding_variance,
+        };
+    };
+
+    auto default_tracker = make_tracker(augur::imm::big_unknown_variance<float>());
+    auto tiny_padding_tracker = make_tracker(0.01f);
+
+    default_tracker.predict(1.0f / 30.0f);
+    tiny_padding_tracker.predict(1.0f / 30.0f);
+
+    const auto omega_idx = static_cast<int>(augur::core::augmented_index_of(augur::core::StateComponent::TurnRate));
+    const auto [x_default, P_default] = default_tracker.combined_state();
+    const auto [x_tiny, P_tiny] = tiny_padding_tracker.combined_state();
+    (void)x_default;
+    (void)x_tiny;
+
+    // A much smaller padding_variance must produce a visibly SMALLER
+    // combined turn-rate variance -- the whole point of the override.
+    REQUIRE(P_tiny(omega_idx, omega_idx) < P_default(omega_idx, omega_idx));
+}
