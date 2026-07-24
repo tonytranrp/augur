@@ -24,7 +24,7 @@ using Catch::Matchers::WithinAbs;
 
 TEST_CASE("ConstantVelocity::transition matches hand-computed arithmetic", "[models][cv]") {
     using CV = augur::models::ConstantVelocity<float, 2>;
-    CV model{/*noise_spectral_density=*/1.0f};
+    CV model{/*accel_noise_density=*/1.0f};
 
     CV::State x0;
     x0 << 0.0f, 0.0f, 2.0f, -1.0f; // px=0, py=0, vx=2, vy=-1

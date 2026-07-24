@@ -18,9 +18,9 @@
 //   using KF = augur::filters::KalmanFilter<CT, /*MeasDim=*/2>;
 //
 //   augur::imm::Estimator<KF, KF, KF> tracker{
-//       KF{CT{/*q_pos=*/1, /*q_turn=*/0.02f}, x0, P0, H, R},  // "calm"
-//       KF{CT{/*q_pos=*/1, /*q_turn=*/0.5f},  x0, P0, H, R},  // "juking"
-//       KF{CT{/*q_pos=*/1, /*q_turn=*/3.0f},  x0, P0, H, R},  // "sharp turn"
+//       KF{CT{/*accel_noise_density=*/1, /*turn_rate_noise_density=*/0.02f}, x0, P0, H, R},  // "calm"
+//       KF{CT{/*accel_noise_density=*/1, /*turn_rate_noise_density=*/0.5f},  x0, P0, H, R},  // "juking"
+//       KF{CT{/*accel_noise_density=*/1, /*turn_rate_noise_density=*/3.0f},  x0, P0, H, R},  // "sharp turn"
 //       augur::imm::ModeMatrix<3, float>::uniform(0.95f)
 //   };
 //   tracker.predict(dt);
@@ -31,10 +31,13 @@
 // Measurement type (enforced below with static_assert). Mixing models
 // of genuinely different *order* (e.g. a 5-state CT against a 6-state
 // CV) needs the common-space mapping-matrix machinery from Bar-Shalom
-// ch. 11.6 that this v0.1 does not implement -- see
-// docs/ARCHITECTURE.md and docs/ROADMAP.md. Mixing several
-// differently-tuned instances of the same model (as above) sidesteps
-// the issue entirely and is often enough in practice.
+// ch. 11.6 -- implemented as the separate, opt-in
+// imm::HeterogeneousEstimator (imm/heterogeneous_estimator.hpp) rather
+// than by relaxing this class, which stays the zero-overhead,
+// same-dimension-only default; see docs/ARCHITECTURE.md and
+// docs/ROADMAP.md. Mixing several differently-tuned instances of the
+// same model (as above) sidesteps the issue entirely and is often
+// enough in practice.
 
 #include <array>
 #include <cstddef>

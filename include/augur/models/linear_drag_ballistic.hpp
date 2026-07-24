@@ -85,11 +85,11 @@ public:
     // for the model to represent actual drag (k=0 degenerates to
     // ConstantAcceleration's own pure-gravity case, handled correctly
     // by the small-k branch below, not treated as an error).
-    // noise_spectral_density: continuous white-noise-acceleration
-    // density, same role as ConstantVelocity's own constructor
-    // parameter.
-    LinearDragBallistic(GravityVector gravity, Scalar drag_coefficient, Scalar noise_spectral_density = Scalar(1))
-        : gravity_(std::move(gravity)), drag_(drag_coefficient), noise_density_(noise_spectral_density) {}
+    // accel_noise_density: continuous white-noise-acceleration
+    // density, same role and same name as ConstantVelocity's own
+    // constructor parameter.
+    LinearDragBallistic(GravityVector gravity, Scalar drag_coefficient, Scalar accel_noise_density = Scalar(1))
+        : gravity_(std::move(gravity)), drag_(drag_coefficient), noise_density_(accel_noise_density) {}
 
     [[nodiscard]] State transition(const State& x, Scalar dt) const {
         State out;

@@ -13,9 +13,9 @@ using CT = augur::models::CoordinatedTurn<float>;
 using KF = augur::filters::KalmanFilter<CT, /*MeasDim=*/2>;
 
 augur::imm::Estimator<KF, KF, KF> tracker{
-    KF{CT{/*q_pos=*/1, /*q_turn=*/0.02f}, x0, P0, H, R}, // calm
-    KF{CT{/*q_pos=*/1, /*q_turn=*/0.5f},  x0, P0, H, R}, // juking
-    KF{CT{/*q_pos=*/1, /*q_turn=*/3.0f},  x0, P0, H, R}, // sharp turn
+    KF{CT{/*accel_noise_density=*/1, /*turn_rate_noise_density=*/0.02f}, x0, P0, H, R}, // calm
+    KF{CT{/*accel_noise_density=*/1, /*turn_rate_noise_density=*/0.5f},  x0, P0, H, R}, // juking
+    KF{CT{/*accel_noise_density=*/1, /*turn_rate_noise_density=*/3.0f},  x0, P0, H, R}, // sharp turn
     augur::imm::ModeMatrix<3, float>::uniform(0.95f)
 };
 

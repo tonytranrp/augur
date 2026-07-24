@@ -70,15 +70,15 @@ public:
     using State = augur::math::Vector<Scalar, dimension>;
     using Transition = augur::math::Matrix<Scalar, dimension>;
 
-    // process_noise_position/process_noise_turn_rate: forwarded to the
-    // internal CoordinatedTurn xy-block, same meaning as that model's own
-    // constructor. process_noise_vertical: forwarded to the internal
-    // ConstantVelocity<Scalar,1> vertical channel, same meaning as that
-    // model's own noise_spectral_density.
-    explicit CoordinatedTurn3D(Scalar process_noise_position = Scalar(1),
-                                Scalar process_noise_turn_rate = Scalar(0.1),
-                                Scalar process_noise_vertical = Scalar(1))
-        : xy_(process_noise_position, process_noise_turn_rate), z_(process_noise_vertical) {}
+    // accel_noise_density/turn_rate_noise_density: forwarded to the
+    // internal CoordinatedTurn xy-block, same names and meaning as that
+    // model's own constructor. vertical_accel_noise_density: forwarded to
+    // the internal ConstantVelocity<Scalar,1> vertical channel, same
+    // meaning as that model's own accel_noise_density.
+    explicit CoordinatedTurn3D(Scalar accel_noise_density = Scalar(1),
+                                Scalar turn_rate_noise_density = Scalar(0.1),
+                                Scalar vertical_accel_noise_density = Scalar(1))
+        : xy_(accel_noise_density, turn_rate_noise_density), z_(vertical_accel_noise_density) {}
 
     [[nodiscard]] State transition(const State& x, Scalar dt) const {
         State out;

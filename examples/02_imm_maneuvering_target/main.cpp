@@ -41,9 +41,9 @@ int main() {
     KF::MeasurementCovariance R = KF::MeasurementCovariance::Identity() * Scalar(0.0004);
 
     augur::imm::Estimator<KF, KF, KF> tracker{
-        KF{CT{/*q_pos=*/Scalar(0.05), /*q_turn=*/Scalar(0.001)}, x0, P0, H, R}, // calm
-        KF{CT{/*q_pos=*/Scalar(0.05), /*q_turn=*/Scalar(0.2)},  x0, P0, H, R},  // juking
-        KF{CT{/*q_pos=*/Scalar(0.05), /*q_turn=*/Scalar(8.0)},  x0, P0, H, R},  // sharp turn
+        KF{CT{/*accel_noise_density=*/Scalar(0.05), /*turn_rate_noise_density=*/Scalar(0.001)}, x0, P0, H, R}, // calm
+        KF{CT{/*accel_noise_density=*/Scalar(0.05), /*turn_rate_noise_density=*/Scalar(0.2)},  x0, P0, H, R},  // juking
+        KF{CT{/*accel_noise_density=*/Scalar(0.05), /*turn_rate_noise_density=*/Scalar(8.0)},  x0, P0, H, R},  // sharp turn
         augur::imm::ModeMatrix<3, Scalar>::uniform(Scalar(0.90))
     };
 

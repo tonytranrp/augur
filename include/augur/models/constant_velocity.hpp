@@ -25,8 +25,8 @@ public:
     // Continuous-white-noise-acceleration spectral density. Larger =
     // the model expects the target to depart from constant velocity
     // more readily (i.e. it trusts the CV assumption less).
-    explicit ConstantVelocity(Scalar noise_spectral_density = Scalar(1))
-        : noise_density_(noise_spectral_density) {}
+    explicit ConstantVelocity(Scalar accel_noise_density = Scalar(1))
+        : noise_density_(accel_noise_density) {}
 
     [[nodiscard]] State transition(const State& x, Scalar dt) const {
         return build_transition(dt) * x;

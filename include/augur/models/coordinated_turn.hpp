@@ -13,6 +13,14 @@
 // Sophus) is listed as a roadmap item in docs/ROADMAP.md rather than
 // implemented here, to keep this file's math honest and checkable.
 //
+// Deliberately no SpatialDim template parameter (unlike ConstantVelocity/
+// ConstantAcceleration/LinearDragBallistic): the turn dynamics below have
+// no per-axis loop to generalize, so a SpatialDim that only ever accepts
+// 2 would be a lying template parameter. models::CoordinatedTurn3D is
+// the real 3D story -- it composes this model's xy-block verbatim with a
+// decoupled vertical channel, rather than this file growing a dimension
+// parameter it can't actually support for anything but 2.
+//
 // NOTE: the transition/jacobian formulas below follow the standard
 // "nearly constant turn" derivation used throughout the tracking
 // literature (e.g. Blackman & Popoli, "Design and Analysis of Modern
@@ -48,11 +56,13 @@ public:
     using State = augur::math::Vector<Scalar, dimension>;
     using Transition = augur::math::Matrix<Scalar, dimension>;
 
-    // process_noise_position/turn control how much the model expects
-    // straight-line motion and turn rate (respectively) to wander.
-    explicit CoordinatedTurn(Scalar process_noise_position = Scalar(1),
-                             Scalar process_noise_turn_rate = Scalar(0.1))
-        : q_pos_(process_noise_position), q_turn_(process_noise_turn_rate) {}
+    // accel_noise_density/turn_rate_noise_density control how much the
+    // model expects straight-line motion and turn rate (respectively) to
+    // wander. turn_rate_noise_density has units rad^2/s^3 (it's the PSD
+    // feeding omega's own random-walk term, process_noise()'s Q(4,4)).
+    explicit CoordinatedTurn(Scalar accel_noise_density = Scalar(1),
+                             Scalar turn_rate_noise_density = Scalar(0.1))
+        : q_pos_(accel_noise_density), q_turn_(turn_rate_noise_density) {}
 
     [[nodiscard]] State transition(const State& x, Scalar dt) const {
         const Scalar vx = x(2), vy = x(3), omega = x(4);

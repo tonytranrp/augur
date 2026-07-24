@@ -113,7 +113,7 @@ KF::MeasurementMatrix H = KF::MeasurementMatrix::Zero();
 H(0, 0) = 1; H(1, 1) = 1; // measure position directly
 
 KF filter{
-    CV{/*noise_spectral_density=*/1.0f},
+    CV{/*accel_noise_density=*/1.0f},
     KF::StateVector::Zero(),
     KF::StateCovariance::Identity() * 10.0f,
     H,

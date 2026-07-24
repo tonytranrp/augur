@@ -27,7 +27,7 @@ int main() {
 
     KF::MeasurementCovariance R = KF::MeasurementCovariance::Identity() * Scalar(0.5);
 
-    KF filter{CV{/*noise_spectral_density=*/Scalar(1)}, x0, P0, H, R};
+    KF filter{CV{/*accel_noise_density=*/Scalar(1)}, x0, P0, H, R};
 
     // A target drifting roughly along +x with a little measurement noise.
     const Scalar dt = Scalar(1.0 / 60.0);

@@ -31,7 +31,7 @@ int main() {
     H_ldb(0, 0) = 1;
     H_ldb(1, 1) = 1;
     KFLDB::MeasurementCovariance R = KFLDB::MeasurementCovariance::Identity() * 0.05f;
-    KFLDB ldb_filter{LDB{gravity, /*drag_coefficient=*/0.3f, /*noise_spectral_density=*/1.0f},
+    KFLDB ldb_filter{LDB{gravity, /*drag_coefficient=*/0.3f, /*accel_noise_density=*/1.0f},
                       KFLDB::StateVector::Zero(), KFLDB::StateCovariance::Identity(), H_ldb, R};
 
     KFCA::MeasurementMatrix H_ca = KFCA::MeasurementMatrix::Zero();
