@@ -73,7 +73,7 @@ public:
     using StateVector = augur::math::Vector<Scalar, static_cast<int>(dimension)>;
     using StateCovariance = augur::math::Matrix<Scalar, static_cast<int>(dimension)>;
 
-    Estimator(Filters... filters, ModeMatrix<model_count, Scalar> transition)
+    explicit Estimator(Filters... filters, ModeMatrix<model_count, Scalar> transition)
         : filters_(std::move(filters)...), transition_(std::move(transition)) {
         mode_probability_.fill(Scalar(1) / Scalar(model_count));
     }

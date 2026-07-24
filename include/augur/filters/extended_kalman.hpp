@@ -51,12 +51,12 @@ public:
     using MeasurementFn = MeasurementFnT;
     using MeasurementJacobianFn = MeasurementJacobianFnT;
 
-    ExtendedKalmanFilter(Model model,
-                          StateVector initial_state,
-                          StateCovariance initial_covariance,
-                          MeasurementFn measurement_fn,
-                          MeasurementJacobianFn measurement_jacobian_fn,
-                          MeasurementCovariance measurement_noise)
+    explicit ExtendedKalmanFilter(Model model,
+                                  StateVector initial_state,
+                                  StateCovariance initial_covariance,
+                                  MeasurementFn measurement_fn,
+                                  MeasurementJacobianFn measurement_jacobian_fn,
+                                  MeasurementCovariance measurement_noise)
         : model_(std::move(model)),
           x_(std::move(initial_state)),
           P_(std::move(initial_covariance)),

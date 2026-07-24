@@ -82,12 +82,12 @@ public:
     using MeasurementFn = MeasurementFnT;
     using MeasurementCovariance = augur::math::Matrix<Scalar, MeasDim>;
 
-    ParticleFilter(Model model,
-                   StateVector initial_state,
-                   StateCovariance initial_covariance,
-                   MeasurementFn measurement_fn,
-                   MeasurementCovariance measurement_noise,
-                   std::uint64_t seed = 42)
+    explicit ParticleFilter(Model model,
+                            StateVector initial_state,
+                            StateCovariance initial_covariance,
+                            MeasurementFn measurement_fn,
+                            MeasurementCovariance measurement_noise,
+                            std::uint64_t seed = 42)
         : model_(std::move(model)), h_(std::move(measurement_fn)), R_(std::move(measurement_noise)), rng_(seed) {
         const StateCovariance L0 = cholesky(initial_covariance);
         for (auto& p : particles_) {

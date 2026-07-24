@@ -86,12 +86,12 @@ public:
         Scalar kappa = Scalar(0);
     };
 
-    UnscentedKalmanFilter(Model model,
-                          StateVector initial_state,
-                          StateCovariance initial_covariance,
-                          MeasurementFn measurement_fn,
-                          MeasurementCovariance measurement_noise,
-                          Config config = Config{})
+    explicit UnscentedKalmanFilter(Model model,
+                                   StateVector initial_state,
+                                   StateCovariance initial_covariance,
+                                   MeasurementFn measurement_fn,
+                                   MeasurementCovariance measurement_noise,
+                                   Config config = Config{})
         : model_(std::move(model)),
           x_(std::move(initial_state)),
           P_(std::move(initial_covariance)),

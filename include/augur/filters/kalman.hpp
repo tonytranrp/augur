@@ -34,11 +34,11 @@ public:
     using MeasurementMatrix = augur::math::Matrix<Scalar, MeasDim, dimension>;
     using MeasurementCovariance = augur::math::Matrix<Scalar, MeasDim>;
 
-    KalmanFilter(Model model,
-                 StateVector initial_state,
-                 StateCovariance initial_covariance,
-                 MeasurementMatrix measurement_matrix,
-                 MeasurementCovariance measurement_noise)
+    explicit KalmanFilter(Model model,
+                          StateVector initial_state,
+                          StateCovariance initial_covariance,
+                          MeasurementMatrix measurement_matrix,
+                          MeasurementCovariance measurement_noise)
         : model_(std::move(model)),
           x_(std::move(initial_state)),
           P_(std::move(initial_covariance)),

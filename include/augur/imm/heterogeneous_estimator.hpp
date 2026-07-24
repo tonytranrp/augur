@@ -63,8 +63,8 @@ public:
     // wrong scale for a caller whose state is expressed in different
     // units. Defaulted for source compatibility: every existing caller
     // gets identical behavior to before this parameter existed.
-    HeterogeneousEstimator(Filters... filters, ModeMatrix<model_count, Scalar> transition,
-                            Scalar padding_variance = big_unknown_variance<Scalar>())
+    explicit HeterogeneousEstimator(Filters... filters, ModeMatrix<model_count, Scalar> transition,
+                                    Scalar padding_variance = big_unknown_variance<Scalar>())
         : filters_(std::move(filters)...), transition_(std::move(transition)), padding_variance_(padding_variance) {
         mode_probability_.fill(Scalar(1) / Scalar(model_count));
     }
