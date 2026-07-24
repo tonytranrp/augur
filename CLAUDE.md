@@ -38,8 +38,9 @@ own top comment and `docs/ROADMAP.md` for specifics. Full tier breakdown:
 - `include/augur/math/` — the one choke point for linear algebra (Eigen
   aliases, `safe_inverse`/`project_to_psd`) and optional glm interop.
 - `include/augur/models/` — constant velocity/acceleration, coordinated
-  turn, and Singer are solid (Singer's process-noise term is the exact
-  Van Loan closed-form integral, not a placeholder); Current Statistical
+  turn (2D and quasi-3D), Singer, and linear-drag ballistic are solid
+  (Singer's process-noise term is the exact Van Loan closed-form integral,
+  not a placeholder); Current Statistical
   is a flagged sketch (its adaptive-mean feedback needed damping/clamping
   to avoid unbounded divergence, and still biases toward its clamp under
   a very long sustained maneuver).
@@ -66,9 +67,10 @@ own top comment and `docs/ROADMAP.md` for specifics. Full tier breakdown:
   Eigen's non-aggregate matrix type), driving `serialize.hpp`'s binary
   (de)serialization; and the concepts-based (plus opt-in runtime registry)
   plugin system. Both solid.
-- `examples/`, `tests/unit/`, `docs/` — one example and one test file per
-  roadmap item (15 examples, 17 test files); see `docs/ARCHITECTURE.md` §4
-  for the full annotated tree.
+- `examples/`, `tests/unit/`, `docs/` — one example per roadmap item plus
+  the newer models (17 examples, 25 test files); see `docs/ARCHITECTURE.md`
+  §4 for the full annotated tree. `benchmarks/` holds Google Benchmark
+  microbenchmarks for the filter/IMM hot paths (`AUGUR_BUILD_BENCHMARKS`).
 
 ## The one standing rule
 
@@ -100,5 +102,6 @@ ctest --test-dir build
 Android: build with the NDK's own CMake toolchain file
 (`-DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24`) — see
 `docs/GETTING_STARTED.md` for the full invocation, the CMake options table
-(`AUGUR_WITH_GLM`, `AUGUR_BUILD_EXAMPLES`, `AUGUR_BUILD_TESTS`), and how to
+(`AUGUR_WITH_GLM`, `AUGUR_BUILD_EXAMPLES`, `AUGUR_BUILD_TESTS`,
+`AUGUR_WARNINGS_AS_ERRORS`, `AUGUR_BUILD_BENCHMARKS`), and how to
 consume `augur` from your own CMake project via CPM.

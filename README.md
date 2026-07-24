@@ -63,7 +63,9 @@ Full build instructions (including Android via the NDK toolchain) in
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Full design rationale, dependency choices, folder structure, known limitations, solid-vs-roadmap tier breakdown |
 | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Build commands (desktop + Android), CMake options, five-minute usage walkthrough |
 | [`docs/PLUGIN_GUIDE.md`](docs/PLUGIN_GUIDE.md) | Writing your own motion model or filter from scratch |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | 14 prioritized extension ideas with citations and effort estimates |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | 14 prioritized extension ideas with citations and effort estimates (all implemented; per-item status recorded inline) |
+| [`docs/PRODUCTION_ROADMAP.md`](docs/PRODUCTION_ROADMAP.md) | Phased path to a production-grade release (CI, packaging, docs) with per-phase status |
+| [`docs/IMPROVEMENT_PLAN.md`](docs/IMPROVEMENT_PLAN.md) | Full-codebase investigation findings and their implementation status |
 
 ## What's implemented today
 
@@ -71,11 +73,13 @@ Every item in `docs/ROADMAP.md` (14 extension ideas, plus the different-order
 IMM mixing structural improvement) is implemented, tested, and has a working
 example under `examples/`.
 
-**Solid**: constant-velocity, constant-acceleration, and coordinated-turn
-motion models; linear, extended, unscented, and particle-filter backends; the
-full IMM mixing/combination cycle (same state dimension); position/velocity/
-2D-and-3D-uncertainty-ellipse queries; multi-target data association (GNN +
-JPDA), track lifecycle management, GM-PHD variable-target-count tracking,
+**Solid**: constant-velocity, constant-acceleration, coordinated-turn (2D
+and quasi-3D), Singer (exact Van Loan process noise), and linear-drag
+ballistic motion models; linear, extended, unscented, and particle-filter
+backends; the full IMM mixing/combination cycle (same state dimension);
+position/velocity/2D-and-3D-uncertainty-ellipse queries; multi-target data
+association (GNN + JPDA + PDAF), track lifecycle management, GM-PHD
+variable-target-count tracking,
 out-of-sequence measurement handling, latency compensation, and sensor
 fusion; a reflection layer (Boost.PFR for plain aggregates, a hand-written
 backend for Eigen vectors, since PFR can't reflect those) driving binary
@@ -84,17 +88,14 @@ save-state/network (de)serialization; the plugin layer. All covered by
 
 **Flagged sketch** (works and is tested, but a named part is a documented
 simplification — see the file's own top comment and `docs/ROADMAP.md` for
-specifics): the Singer maneuvering-target model; the Current Statistical
-adaptive-acceleration model; different-order IMM mixing
-(`imm::HeterogeneousEstimator`, mixing e.g. constant-velocity and
-coordinated-turn despite their different state dimensions); Sage-Husa
-adaptive process-noise estimation; the GM-PHD filter's `extract_targets()`
-(doesn't yet split an above-weight-1 component into multiple targets).
+specifics): the Current Statistical adaptive-acceleration model;
+different-order IMM mixing (`imm::HeterogeneousEstimator`, mixing e.g.
+constant-velocity and coordinated-turn despite their different state
+dimensions); and Sage-Husa adaptive process-noise estimation.
 
 Full status, effort estimates, and citations for everything above:
 `docs/ROADMAP.md`.
 
 ## License
 
-Not yet chosen — add one (MIT and Apache-2.0 are the common choices for a
-library like this) before publishing anywhere.
+Apache-2.0 — see [`LICENSE`](LICENSE).

@@ -417,13 +417,13 @@ before it reaches a `KalmanFilter`.
 ## Tooling & confidence
 
 ### 11. Debug / visualization export ✅ Done
-**Status**: **already implemented**, not just an idea — `predict/query.hpp`'s
+**Status (2D, pre-existing)**: **already implemented**, not just an idea — `predict/query.hpp`'s
 `error_ellipse_2d()` extracts the 1-sigma uncertainty ellipse from any
 filter's covariance, ready for a debug-draw gizmo. Extending it to 3D
 (an ellipsoid via the same eigen-decomposition approach, one dimension up)
 is the natural next step.
 **Effort**: Low for the 3D extension.
-**Status update**: `error_ellipsoid_3d()`/`ErrorEllipsoid3D` added to
+**Status (3D extension)**: `error_ellipsoid_3d()`/`ErrorEllipsoid3D` added to
 `predict/query.hpp`, same eigen-decomposition approach one dimension up.
 One correctness detail beyond a direct port: `orientation`'s columns are
 forced to a proper (determinant +1) rotation rather than left as whatever

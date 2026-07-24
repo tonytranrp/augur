@@ -63,19 +63,21 @@ cmake --build build-android
 ```
 
 NEON is on by default for `arm64-v8a` on current NDKs, so Eigen vectorizes
-without any extra flags. Nothing in the solid tier (`core/`, `math/`,
-`models/{constant_velocity,constant_acceleration,coordinated_turn}`,
-`filters/{kalman,extended_kalman}`, `imm/`) needs anything past a conforming
-C++20 front end — see `docs/ARCHITECTURE.md` §2.4 for why this library
-deliberately doesn't reach for C++23/26-only features.
+without any extra flags. Nothing in the solid tier needs anything past a
+conforming C++20 front end (see `docs/ARCHITECTURE.md` §6 for the current
+tier list, and §2.4 for why this library deliberately doesn't reach for
+C++23/26-only features) — CI cross-compiles every example for
+`arm64-v8a` on every push to keep that true.
 
 ## CMake options
 
 | Option | Default | Effect |
 |---|---|---|
 | `AUGUR_WITH_GLM` | `ON` | Fetches glm, enables `math/interop_glm.hpp` |
-| `AUGUR_BUILD_EXAMPLES` | `ON` | Builds the three `examples/` programs |
+| `AUGUR_BUILD_EXAMPLES` | `ON` | Builds the 17 `examples/` programs |
 | `AUGUR_BUILD_TESTS` | `OFF` | Fetches Catch2, builds `tests/` |
+| `AUGUR_WARNINGS_AS_ERRORS` | `OFF` | `-Werror` / `/WX` on augur's own targets (CI turns this on) |
+| `AUGUR_BUILD_BENCHMARKS` | `OFF` | Fetches Google Benchmark, builds `benchmarks/` |
 
 Turn tests on with:
 

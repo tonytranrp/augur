@@ -16,11 +16,14 @@ anywhere load-bearing outside the namespace.
 ## 1. What this library covers
 
 - **Motion models** (`models/`): the deterministic + stochastic dynamics of a
-  moving target — constant velocity, constant acceleration, coordinated turn,
-  and the Singer maneuvering-target model.
+  moving target — constant velocity, constant acceleration, coordinated turn
+  (2D and quasi-3D), the Singer maneuvering-target model, linear-drag
+  ballistics, and the Current Statistical adaptive-mean variant (flagged
+  sketch, see §6).
 - **Filters** (`filters/`): the recursive estimation rule applied to a model —
-  linear Kalman filter and Extended Kalman filter today; UKF, particle filter,
-  and adaptive noise estimation are roadmap items.
+  linear Kalman, extended Kalman, unscented Kalman, and particle filters,
+  plus adaptive wrappers (Sage-Husa noise estimation and the Current
+  Statistical feedback filter — both flagged sketches, see §6).
 - **IMM** (`imm/`): the actual point of the library — mixing several
   models/filters together so the tracker itself notices when a target stops
   moving in a straight line, instead of you manually switching models.
@@ -28,9 +31,10 @@ anywhere load-bearing outside the namespace.
   state into what a caller actually wants — a position, a velocity, an
   uncertainty ellipse for debug draw, a state extrapolated to a render or
   network-compensation horizon.
-- **Multi-target scaffolding** (`track/`): data association, track lifecycle,
-  and (as an advanced stretch item) GM-PHD for unknown target counts —
-  documented interface-level stubs, not implemented yet.
+- **Multi-target scaffolding** (`track/`): data association (GNN + JPDA +
+  PDAF), track lifecycle, GM-PHD for unknown target counts, out-of-sequence
+  measurement handling, and sensor fusion — all implemented and tested
+  (see §6).
 - **Reflection** (`reflect/`) and **plugin** (`plugin/`) layers: the mechanisms
   that make the rest of this "open" rather than hardcoded (see §3 and §4).
 
@@ -165,9 +169,11 @@ Libraries considered and **not** chosen, for the record: **Blaze** and
 performance, which is a real portability tax on Android; **xtensor** is a
 fine numpy-style array library but doesn't buy anything over Eigen for
 fixed-size Kalman-filter-shaped linear algebra specifically. **Sophus**
-(Lie groups, SO(3)/SE(3)) is worth revisiting if/when a 3D coordinated-turn
-model is built (see `docs/ROADMAP.md`) but isn't a dependency of anything
-that exists today.
+(Lie groups, SO(3)/SE(3)) was considered for a full 3D turn model; the
+quasi-3D `models/coordinated_turn_3d.hpp` that now exists deliberately
+composes the planar turn with a decoupled vertical channel instead (see its
+file comment for why), so Sophus stays unused — revisit only if full SO(3)
+turn dynamics ever become a real need.
 
 ## 4. Folder structure
 
@@ -180,17 +186,18 @@ augur/
 │   ├── augur.hpp                umbrella header (solid tier only, see §6)
 │   ├── core/                    concepts.hpp, config.hpp, state_component.hpp (augmented-layout enum) — foundation everything else builds on
 │   ├── math/                    backend.hpp (Eigen aliases + safe_inverse/project_to_psd), interop_glm.hpp
-│   ├── models/                  model_concept.hpp + constant_velocity/constant_acceleration/coordinated_turn/singer/current_statistical
+│   ├── models/                  model_concept.hpp + constant_velocity/constant_acceleration/coordinated_turn/coordinated_turn_3d/singer/current_statistical/linear_drag_ballistic
 │   ├── filters/                 filter_concept.hpp + kalman/extended_kalman/unscented_kalman/particle_filter/current_statistical_filter, filters/adaptive/sage_husa.hpp
 │   ├── imm/                     mode_matrix.hpp, mixing.hpp, estimator.hpp (same-dimension IMM) + augmented_layout.hpp/heterogeneous_mixing.hpp/heterogeneous_estimator.hpp (opt-in different-order mixing, §5)
 │   ├── predict/                 query.hpp (2D/3D error ellipse) + latency_compensation.hpp (SnapshotBuffer, predict_to_render_time)
-│   ├── track/                   association.hpp (NN + JPDA), track_manager.hpp, gm_phd.hpp, out_of_sequence.hpp, fusion.hpp
+│   ├── track/                   association.hpp (GNN + JPDA + PDAF), track_manager.hpp, gm_phd.hpp, out_of_sequence.hpp, fusion.hpp
 │   ├── reflect/                 descriptor.hpp (dispatches VectorBackend/PfrBackend), has_reflection.hpp, serialize.hpp (binary wire format), backends/{pfr_backend,vector_backend}.hpp
 │   ├── plugin/                  concepts.hpp (the real plugin mechanism), registry.hpp (runtime variant)
-│   └── utils/                   type_traits/fixed_vector/assert/timing — reused from every module above
-├── examples/                    01_basic_cv_tracking .. 15_reflection_serialization (one per roadmap item, see docs/ROADMAP.md)
+│   └── utils/                   type_traits/fixed_vector/ring_buffer/assert/timing/xoshiro256pp — reused from every module above
+├── examples/                    01_basic_cv_tracking .. 17_coordinated_turn_3d (one per roadmap item plus the newer models, see docs/ROADMAP.md)
+├── benchmarks/                  Google Benchmark microbenchmarks for the filter/IMM hot paths (AUGUR_BUILD_BENCHMARKS, OFF by default)
 ├── tests/unit/                  one test file per module — see tests/CMakeLists.txt for the current list; test_helpers.hpp holds the shared finite-difference jacobian checker
-└── docs/                        this file, ROADMAP.md, GETTING_STARTED.md, PLUGIN_GUIDE.md
+└── docs/                        this file, ROADMAP.md, GETTING_STARTED.md, PLUGIN_GUIDE.md, PRODUCTION_ROADMAP.md, IMPROVEMENT_PLAN.md
 ```
 
 Every module that isn't `core/` or `utils/` reaches back into both of them —
@@ -236,7 +243,8 @@ unvalidated Kalman math is worse than not shipping it.
 **Solid — implemented and reasoned through carefully:**
 `core/` (including `state_component.hpp`), `math/` (both files),
 `models/constant_velocity.hpp`, `models/constant_acceleration.hpp`,
-`models/coordinated_turn.hpp`, `models/singer.hpp`, `filters/kalman.hpp`,
+`models/coordinated_turn.hpp`, `models/coordinated_turn_3d.hpp`,
+`models/singer.hpp`, `models/linear_drag_ballistic.hpp`, `filters/kalman.hpp`,
 `filters/extended_kalman.hpp`, `filters/unscented_kalman.hpp`,
 `filters/particle_filter.hpp`, `imm/mode_matrix.hpp`, `imm/mixing.hpp`,
 `imm/estimator.hpp`, `predict/query.hpp`, `predict/latency_compensation.hpp`,
