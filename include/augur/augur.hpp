@@ -5,7 +5,7 @@
 // tested tier (config, concepts, math, the three built-in motion
 // models, the linear/extended Kalman filters, and the IMM estimator)
 // plus the plugin concept and reflection facade. Deliberately does NOT
-// include the roadmap-tier stubs under track/, filters/adaptive/, or
+// include the roadmap-tier stubs under track/, filters/sage_husa.hpp, or
 // predict/latency_compensation.hpp -- pull those in explicitly once
 // you've implemented them, so an accidental #include of an
 // unimplemented stub isn't hiding behind "I just included augur.hpp".

@@ -7,7 +7,7 @@
 // hand-tuned filter would keep trusting its original (now wrong) R;
 // this one adapts.
 //
-// See filters/adaptive/sage_husa.hpp's file comment for the scope this
+// See filters/sage_husa.hpp's file comment for the scope this
 // is built for (H observes position directly, the convention every
 // example in this library already follows) and the honest limitation
 // found while testing it: without the eigenvalue-flooring fix
@@ -18,7 +18,7 @@
 #include <cstdio>
 #include <random>
 #include "augur/augur.hpp"
-#include "augur/filters/adaptive/sage_husa.hpp"
+#include "augur/filters/sage_husa.hpp"
 
 int main() {
     using Scalar = float;

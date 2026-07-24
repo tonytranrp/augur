@@ -187,7 +187,7 @@ augur/
 │   ├── core/                    concepts.hpp, config.hpp, state_component.hpp (augmented-layout enum) — foundation everything else builds on
 │   ├── math/                    backend.hpp (Eigen aliases + safe_inverse/project_to_psd), interop_glm.hpp
 │   ├── models/                  model_concept.hpp + constant_velocity/constant_acceleration/coordinated_turn/coordinated_turn_3d/singer/current_statistical/linear_drag_ballistic
-│   ├── filters/                 filter_concept.hpp + kalman/extended_kalman/unscented_kalman/particle_filter/current_statistical_filter, filters/adaptive/sage_husa.hpp
+│   ├── filters/                 filter_concept.hpp + kalman/extended_kalman/unscented_kalman/particle_filter/current_statistical_filter/sage_husa/observe_position
 │   ├── imm/                     mode_matrix.hpp, mixing.hpp, estimator.hpp (same-dimension IMM) + augmented_layout.hpp/heterogeneous_mixing.hpp/heterogeneous_estimator.hpp (opt-in different-order mixing, §5)
 │   ├── predict/                 query.hpp (2D/3D error ellipse) + latency_compensation.hpp (SnapshotBuffer, predict_to_render_time)
 │   ├── track/                   association.hpp (GNN + JPDA + PDAF), track_manager.hpp, gm_phd.hpp, out_of_sequence.hpp, fusion.hpp
@@ -267,7 +267,7 @@ restrict math itself is verified, but the "unknown variance padding" heuristic
 for components a lower-order model doesn't track has a documented, tested
 characteristic: a non-dominant model's confidence about its own unique state
 can be noisy under repeated mixing — see that item's write-up for specifics);
-`filters/adaptive/sage_husa.hpp` (docs/ROADMAP.md item 2 — the eigenvalue-
+`filters/sage_husa.hpp` (docs/ROADMAP.md item 2 — the eigenvalue-
 flooring fix for the known divergence failure mode is verified, but the
 implementation assumes a direct-position measurement model, stated in its
 own file comment).

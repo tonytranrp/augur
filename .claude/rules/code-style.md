@@ -92,7 +92,7 @@ Every non-trivial file is honest, in its own top comment, about its tier:
 - **Flagged sketch** (`models/current_statistical.hpp`
   + `filters/current_statistical_filter.hpp`, `imm/{augmented_layout,
   heterogeneous_mixing,heterogeneous_estimator}.hpp`,
-  `filters/adaptive/sage_husa.hpp`): compiles and
+  `filters/sage_husa.hpp`): compiles and
   satisfies its concept, but a named part is a known simplification. Marked
   with a `ROADMAP MODEL --` line at the top of the file comment, naming
   exactly which part is simplified and citing the source for the real

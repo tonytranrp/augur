@@ -19,7 +19,7 @@
 // utils::FixedVector so a game with a known max entity count never has
 // this module touching the heap per frame.
 //
-// SCOPE, stated plainly, matching filters/adaptive/sage_husa.hpp's own
+// SCOPE, stated plainly, matching filters/sage_husa.hpp's own
 // stated assumption: association gating assumes the measurement
 // observes the state's first MeasDim components directly (position, no
 // scaling/rotation) -- Filter's interface doesn't expose a general H to

@@ -31,7 +31,7 @@
 //
 // Composes with an existing Filter (predict()/update()/set_state()),
 // the same pattern filters/current_statistical_filter.hpp and
-// filters/adaptive/sage_husa.hpp use, rather than duplicating filter
+// filters/sage_husa.hpp use, rather than duplicating filter
 // math.
 
 #include <cstddef>

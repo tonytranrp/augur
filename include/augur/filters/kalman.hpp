@@ -85,7 +85,7 @@ public:
     // Mutable escape hatch for adaptive-filter wrappers that compose
     // with an existing Filter rather than reimplementing its math (see
     // filters/current_statistical_filter.hpp and the intended shape
-    // sketched in filters/adaptive/sage_husa.hpp) -- they need to
+    // sketched in filters/sage_husa.hpp) -- they need to
     // rewrite the inner model's own tunable parameters between cycles
     // based on the filter's own output.
     [[nodiscard]] Model& model() { return model_; }

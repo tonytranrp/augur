@@ -165,7 +165,10 @@ divergence/non-positive-definiteness failure mode of the vanilla formulation
 is well documented — a real implementation should use one of the
 credibility-weighted or square-root-decomposition fixes from the modern
 adaptive-Kalman literature rather than the 1969 version verbatim.
-**Where**: stubbed in `filters/adaptive/sage_husa.hpp`.
+**Where**: `filters/sage_husa.hpp` (originally stubbed under
+`filters/adaptive/`; moved flat so the folder matches the declared
+`augur::filters` namespace, per `.claude/rules/code-style.md`'s
+namespaces-mirror-folders rule).
 **Effort**: Medium — the covariance-matching math is straightforward; making
 it not diverge in practice is the actual work.
 **Status**: implemented as `filters::SageHusaAdaptive<Inner, MeasDim>`. The

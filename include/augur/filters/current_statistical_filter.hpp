@@ -5,7 +5,7 @@
 // half of docs/ROADMAP.md item 1 ("Current Statistical model"). Composes
 // with an existing Filter (e.g. KalmanFilter<CurrentStatistical<...>,...>)
 // rather than duplicating its predict/update math, the same pattern
-// filters/adaptive/sage_husa.hpp's own stub describes: after every
+// filters/sage_husa.hpp's own stub describes: after every
 // update(), it reads the inner filter's own posterior acceleration
 // estimate and feeds it back into the model's mean_acceleration() for
 // the next predict() cycle.

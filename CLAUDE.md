@@ -45,7 +45,7 @@ own top comment and `docs/ROADMAP.md` for specifics. Full tier breakdown:
   to avoid unbounded divergence, and still biases toward its clamp under
   a very long sustained maneuver).
 - `include/augur/filters/` — linear, extended, unscented Kalman, and
-  particle filters are solid; `filters/adaptive/sage_husa.hpp` is a flagged
+  particle filters are solid; `filters/sage_husa.hpp` is a flagged
   sketch (assumes a direct-position measurement model, stated in its own
   file comment).
 - `include/augur/imm/` — the star of the library: mode matrix, mixing math,

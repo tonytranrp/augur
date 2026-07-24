@@ -11,7 +11,7 @@
 // Why this is safe as a default: every built-in model lays out its
 // position components FIRST in the state vector -- the same layout
 // convention predict/query.hpp's position()/velocity() accessors and
-// filters/adaptive/sage_husa.hpp's direct-position assumption already
+// filters/sage_husa.hpp's direct-position assumption already
 // rely on. One honest exception, stated here rather than discovered
 // the hard way: CoordinatedTurn3D's state is
 // [px, py, vx, vy, omega, pz, vz], so its pz lives at index 5 -- to

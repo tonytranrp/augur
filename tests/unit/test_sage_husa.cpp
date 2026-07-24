@@ -1,7 +1,7 @@
 // tests/unit/test_sage_husa.cpp
 //
 // Coverage for docs/ROADMAP.md item 2 ("Adaptive / self-tuning process
-// noise", filters/adaptive/sage_husa.hpp). The scenario in the first two
+// noise", filters/sage_husa.hpp). The scenario in the first two
 // cases mirrors what was verified in Python before any of this was
 // written in C++ (per .claude/rules/testing.md): a sensor/process that
 // changes its true noise level partway through a run, checking that the
@@ -14,7 +14,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "augur/augur.hpp"
-#include "augur/filters/adaptive/sage_husa.hpp"
+#include "augur/filters/sage_husa.hpp"
 
 using Catch::Matchers::WithinAbs;
 

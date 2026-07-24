@@ -1,5 +1,5 @@
 #pragma once
-// augur/filters/adaptive/sage_husa.hpp
+// augur/filters/sage_husa.hpp
 //
 // docs/ROADMAP.md, "Adaptive / self-tuning process noise": Sage-Husa
 // adaptive filtering estimates the process/measurement noise covariances

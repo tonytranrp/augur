@@ -34,7 +34,7 @@
 // found it ALSO drifts without bound if mean_acceleration() is updated
 // from the raw (undamped, unclamped) posterior acceleration every
 // cycle -- same failure family the vanilla Sage-Husa formulation is
-// already known for (see filters/adaptive/sage_husa.hpp's own citation
+// already known for (see filters/sage_husa.hpp's own citation
 // of this). The mitigation used here, verified to actually bound the
 // growth (see filters/current_statistical_filter.hpp and
 // tests/unit/test_current_statistical.cpp): update

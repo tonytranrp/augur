@@ -46,7 +46,7 @@ using DynMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 // Projects a symmetric matrix onto the positive-semi-definite cone by
 // eigenvalue-flooring: decompose, clamp any eigenvalue below
 // min_eigenvalue up to it, reconstruct. Used by
-// filters/adaptive/sage_husa.hpp to repair an adaptively-estimated Q/R
+// filters/sage_husa.hpp to repair an adaptively-estimated Q/R
 // that's drifted non-PSD -- the "known divergence/non-positive-
 // definiteness failure mode" that formulation's own file comment cites
 // as needing a fix rather than the vanilla 1969 update applied as-is.
