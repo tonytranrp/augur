@@ -5,6 +5,7 @@
 
 add_executable(augur_unit_tests
     unit/test_observe_position.cpp
+    unit/test_filter_config.cpp
     unit/test_ring_buffer.cpp
     unit/test_linear_drag_ballistic.cpp
     unit/test_coordinated_turn_3d.cpp

@@ -10,6 +10,7 @@
 // projection of a 3D position, range-only sonar/radar-style sensors,
 // etc.
 
+#include "augur/filters/observe_position.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 #include <cmath>
@@ -63,6 +64,33 @@ public:
           h_(std::move(measurement_fn)),
           H_fn_(std::move(measurement_jacobian_fn)),
           R_(std::move(measurement_noise)) {}
+
+    // Designated-initializer-friendly construction aggregate -- see
+    // filters/kalman.hpp::Config's identical rationale. measurement_fn/
+    // measurement_jacobian_fn default to ObservePositionFn/
+    // ObservePositionJacobianFn (observe_position.hpp), which convert to
+    // MeasurementFnT/MeasurementJacobianFnT when those stay at their own
+    // std::function default; a custom MeasurementFnT that can't accept
+    // them must supply both fields explicitly when using Config (the
+    // 6-arg ctor above is unaffected either way).
+    struct Config {
+        Model model;
+        StateVector initial_state = StateVector::Zero();
+        StateCovariance initial_covariance = StateCovariance::Identity();
+        MeasurementFn measurement_fn =
+            ObservePositionFn<Scalar, MeasDim, static_cast<int>(dimension)>();
+        MeasurementJacobianFn measurement_jacobian_fn =
+            ObservePositionJacobianFn<Scalar, MeasDim, static_cast<int>(dimension)>();
+        MeasurementCovariance measurement_noise = MeasurementCovariance::Identity();
+    };
+
+    explicit ExtendedKalmanFilter(Config config)
+        : ExtendedKalmanFilter(std::move(config.model),
+                               std::move(config.initial_state),
+                               std::move(config.initial_covariance),
+                               std::move(config.measurement_fn),
+                               std::move(config.measurement_jacobian_fn),
+                               std::move(config.measurement_noise)) {}
 
     void predict(Scalar dt) {
         const StateCovariance F = model_.jacobian(x_, dt);

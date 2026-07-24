@@ -14,6 +14,7 @@
 // extended_kalman.hpp instead -- it reuses this same state-propagation
 // code and only swaps the update step.
 
+#include "augur/filters/observe_position.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 #include <cmath>
@@ -44,6 +45,32 @@ public:
           P_(std::move(initial_covariance)),
           H_(std::move(measurement_matrix)),
           R_(std::move(measurement_noise)) {}
+
+    // Designated-initializer-friendly construction aggregate, an
+    // alternative to the five-positional-argument ctor above (which
+    // stays -- this delegates to it, so the two are bit-identical by
+    // construction). Only `model` has no default (the one thing this
+    // file won't guess); measurement_matrix defaults to
+    // observe_position() (direct position read -- see that header's own
+    // comment for the one built-in model, CoordinatedTurn3D, this
+    // doesn't apply to) and measurement_noise defaults to a placeholder
+    // Identity scale, not a tuned value -- replace it with your sensor's
+    // real noise.
+    struct Config {
+        Model model;
+        StateVector initial_state = StateVector::Zero();
+        StateCovariance initial_covariance = StateCovariance::Identity();
+        MeasurementMatrix measurement_matrix =
+            observe_position<Scalar, MeasDim, static_cast<int>(dimension)>();
+        MeasurementCovariance measurement_noise = MeasurementCovariance::Identity();
+    };
+
+    explicit KalmanFilter(Config config)
+        : KalmanFilter(std::move(config.model),
+                       std::move(config.initial_state),
+                       std::move(config.initial_covariance),
+                       std::move(config.measurement_matrix),
+                       std::move(config.measurement_noise)) {}
 
     void predict(Scalar dt) {
         const StateCovariance F = model_.jacobian(x_, dt);

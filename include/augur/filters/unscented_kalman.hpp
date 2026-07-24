@@ -44,6 +44,7 @@
 #include <cstddef>
 #include <functional>
 #include <numbers>
+#include "augur/filters/observe_position.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 
@@ -72,7 +73,13 @@ public:
     using MeasurementCovariance = augur::math::Matrix<Scalar, MeasDim>;
     using MeasurementFn = MeasurementFnT;
 
-    struct Config {
+    // RENAMED from this class's own former `Config` (the name now
+    // belongs to the construction aggregate below, matching what
+    // `::Config` means everywhere else in this library --
+    // track/track_manager.hpp's and track/gm_phd.hpp's Configs are both
+    // full construction aggregates, not tuning knobs). Semantics and
+    // defaults unchanged.
+    struct SigmaPointTuning {
         // alpha=1 (not the textbook-common 1e-3 -- see the file comment
         // for the float32 catastrophic-cancellation bug that default
         // caused, found via ad hoc python3 verification before this
@@ -91,22 +98,42 @@ public:
                                    StateCovariance initial_covariance,
                                    MeasurementFn measurement_fn,
                                    MeasurementCovariance measurement_noise,
-                                   Config config = Config{})
+                                   SigmaPointTuning tuning = SigmaPointTuning{})
         : model_(std::move(model)),
           x_(std::move(initial_state)),
           P_(std::move(initial_covariance)),
           h_(std::move(measurement_fn)),
           R_(std::move(measurement_noise)),
-          config_(config) {
-        const Scalar lambda = config_.alpha * config_.alpha * (Scalar(StateDim) + config_.kappa) - Scalar(StateDim);
+          tuning_(tuning) {
+        const Scalar lambda = tuning_.alpha * tuning_.alpha * (Scalar(StateDim) + tuning_.kappa) - Scalar(StateDim);
         lambda_ = lambda;
         Wm_[0] = lambda / (Scalar(StateDim) + lambda);
-        Wc_[0] = Wm_[0] + (Scalar(1) - config_.alpha * config_.alpha + config_.beta);
+        Wc_[0] = Wm_[0] + (Scalar(1) - tuning_.alpha * tuning_.alpha + tuning_.beta);
         for (int i = 1; i < NumSigmaPoints; ++i) {
             Wm_[i] = Scalar(1) / (Scalar(2) * (Scalar(StateDim) + lambda));
             Wc_[i] = Wm_[i];
         }
     }
+
+    // Designated-initializer-friendly construction aggregate -- see
+    // filters/kalman.hpp::Config's identical rationale. measurement_fn
+    // defaults the same way filters/extended_kalman.hpp::Config's does.
+    struct Config {
+        Model model;
+        StateVector initial_state = StateVector::Zero();
+        StateCovariance initial_covariance = StateCovariance::Identity();
+        MeasurementFn measurement_fn = ObservePositionFn<Scalar, MeasDim, StateDim>();
+        MeasurementCovariance measurement_noise = MeasurementCovariance::Identity();
+        SigmaPointTuning sigma_points{};
+    };
+
+    explicit UnscentedKalmanFilter(Config config)
+        : UnscentedKalmanFilter(std::move(config.model),
+                                std::move(config.initial_state),
+                                std::move(config.initial_covariance),
+                                std::move(config.measurement_fn),
+                                std::move(config.measurement_noise),
+                                config.sigma_points) {}
 
     void predict(Scalar dt) {
         const auto sigma = generate_sigma_points(x_, P_);
@@ -187,7 +214,7 @@ private:
     StateCovariance P_;
     MeasurementFn h_;
     MeasurementCovariance R_;
-    Config config_;
+    SigmaPointTuning tuning_;
     Scalar lambda_;
     std::array<Scalar, NumSigmaPoints> Wm_;
     std::array<Scalar, NumSigmaPoints> Wc_;

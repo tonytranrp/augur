@@ -53,6 +53,7 @@
 #include <functional>
 #include <numbers>
 #include <random>
+#include "augur/filters/observe_position.hpp"
 #include "augur/math/backend.hpp"
 #include "augur/models/model_concept.hpp"
 #include "augur/utils/xoshiro256pp.hpp"
@@ -96,6 +97,27 @@ public:
         }
         update_cached_moments();
     }
+
+    // Designated-initializer-friendly construction aggregate -- see
+    // filters/kalman.hpp::Config's identical rationale. seed defaults to
+    // the same 42 the positional ctor's own trailing parameter already
+    // defaults to.
+    struct Config {
+        Model model;
+        StateVector initial_state = StateVector::Zero();
+        StateCovariance initial_covariance = StateCovariance::Identity();
+        MeasurementFn measurement_fn = ObservePositionFn<Scalar, MeasDim, StateDim>();
+        MeasurementCovariance measurement_noise = MeasurementCovariance::Identity();
+        std::uint64_t seed = 42;
+    };
+
+    explicit ParticleFilter(Config config)
+        : ParticleFilter(std::move(config.model),
+                         std::move(config.initial_state),
+                         std::move(config.initial_covariance),
+                         std::move(config.measurement_fn),
+                         std::move(config.measurement_noise),
+                         config.seed) {}
 
     void predict(Scalar dt) {
         const StateCovariance L = cholesky(model_.process_noise(dt));
